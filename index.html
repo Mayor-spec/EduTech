@@ -4,52 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EduBridge AI - Study Sprint</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main class="container">
-    
-    <!-- MAIN INTERFACE: NOTE PROCESSING INPUT -->
-    <section id="input-section">
-      <h1>EduBridge AI</h1>
-      <p>Paste your lecture notes below to generate an automated Study Sprint.</p>
-      <textarea id="notes-input" placeholder="Paste your study materials here..."></textarea>
-      <button id="generate-btn">Generate Study Sprint</button>
-    </section>
-
-    <!-- WORKSPACE DASHBOARD: BENTO SECTIONS -->
-    <section id="workspace-section" class="hidden">
-      <div class="bento-grid">
-        
-        <div class="card summary-card">
-          <h2> Study Summary</h2>
-          <div id="summary-content"></div>
-        </div>
-        
-        <div class="card mnemonic-card">
-          <h2> Memory Trick</h2>
-          <p id="mnemonic-content"></p>
-        </div>
-        
-        <div class="card quiz-card">
-          <h2> Active Recall Quiz</h2>
-          <div id="quiz-content"></div>
-        </div>
-        
-      </div>
-    </section>
-    
-  </main>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EduBridge AI - Study Sprint</title>
   <style>
     :root {
       --bg-main: #f5f3f9;
@@ -94,7 +48,7 @@
     #input-section {
       text-align: center;
       max-width: 600px;
-      margin: 0 auto;
+      margin: 0 auto 20px auto;
       background: var(--bg-card);
       padding: 40px;
       border-radius: var(--radius-main);
