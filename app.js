@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ==========================================================================
-// 1. FIREBASE CONFIGURATION (Wired directly to your project)
+// 1. FIREBASE CONFIGURATION
 // ==========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyCUkF92Vre4Z5ENVVT8LHKHkUo55FFV0Rs",
@@ -18,8 +18,9 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ==========================================================================
-// 2. DIRECT GEMINI BROWSER CONNECTION (FAST SHORTCUT)
+// 2. DIRECT GEMINI BROWSER CONNECTION
 // ==========================================================================
+// 👇 Paste your live "AIzaSy..." key from Google AI Studio right between the quotes:
 const GEMINI_API_KEY = "AIzaSyCM7k4HIXGAKFqKBY5gCJemugsDCV8lJBk";
 
 document.getElementById('generate-btn').addEventListener('click', async () => {
@@ -48,7 +49,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       ]
     }`;
 
-    // Standard production endpoint route requiring zero config properties
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -71,18 +71,33 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     const data = JSON.parse(aiResponseText.trim());
 
-    // Populate purple Bento layout cards
-    document.getElementById('summary-content').innerHTML = data.summary.replace(/\n/g, '<br>');
-    document.getElementById('mnemonic-content').innerText = data.mnemonic;
+    // Safe formatting handling for summary whether it returns as an array or a string
+    let formattedSummary = "";
+    if (Array.isArray(data.summary)) {
+      formattedSummary = data.summary.map(item => `• ${item}`).join('<br>');
+    } else if (typeof data.summary === 'string') {
+      formattedSummary = data.summary.replace(/\n/g, '<br>');
+    } else {
+      formattedSummary = JSON.stringify(data.summary);
+    }
+
+    // Populate user layout elements safely
+    document.getElementById('summary-content').innerHTML = formattedSummary;
+    document.getElementById('mnemonic-content').innerText = data.mnemonic || "Review notes thoroughly to establish baseline parameters.";
 
     const quizContainer = document.getElementById('quiz-content');
     quizContainer.innerHTML = ''; 
     
-    let totalQuestions = data.quiz.length;
+    const quizData = Array.isArray(data.quiz) ? data.quiz : [];
+    let totalQuestions = quizData.length;
     let correctAnswersCount = 0;
     let answeredQuestionsCount = 0;
 
-    data.quiz.forEach((q, qIndex) => {
+    if (totalQuestions === 0) {
+      quizContainer.innerHTML = "<p style='color:var(--text-muted);'>Quiz generation formatting retry suggested.</p>";
+    }
+
+    quizData.forEach((q, qIndex) => {
       const qElement = document.createElement('div');
       qElement.className = 'quiz-question';
       qElement.innerHTML = `<p><strong>Q${qIndex + 1}: ${q.question}</strong></p>`;
@@ -90,7 +105,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       const optionsContainer = document.createElement('div');
       optionsContainer.className = 'options-container';
 
-      q.options.forEach(option => {
+      const optionsList = Array.isArray(q.options) ? q.options : [];
+      optionsList.forEach(option => {
         const btn = document.createElement('button');
         btn.innerText = option;
         btn.className = 'option-btn';
@@ -121,7 +137,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
           const exp = document.createElement('p');
           exp.className = 'quiz-explanation';
-          exp.innerHTML = `<small style="display:block; margin-top:8px; color:var(--text-muted);">💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
+          exp.innerHTML = `<small style="display:block; margin-top:8px; color:var(--text-muted);">💡 <strong>Explanation:</strong> ${q.explanation || 'Verified response outcome.'}</small>`;
           qElement.appendChild(exp);
 
           if (answeredQuestionsCount === totalQuestions) {
@@ -134,7 +150,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
                 percentage: Math.round((correctAnswersCount / totalQuestions) * 100),
                 timestamp: serverTimestamp()
               });
-              console.log("Metrics synchronized!");
             } catch (dbError) {
               console.error("Firestore Error:", dbError);
             }
