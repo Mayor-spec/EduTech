@@ -49,7 +49,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       ]
     }`;
 
-        // Connect straight to Google's live gateway from the browser
+            // Connect straight to Google's live gateway from the browser
     const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -58,6 +58,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         generationConfig: { responseMimeType: "application/json" }
       })
     });
+
 
 
     const resultData = await response.json();
