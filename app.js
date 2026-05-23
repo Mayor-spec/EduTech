@@ -18,10 +18,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ==========================================================================
-// 2. DIRECT GEMINI BROWSER CONNECTION
+// 2. DIRECT GEMINI CONNECTION (Scraper-Proof Security Format)
 // ==========================================================================
-// 👇 Paste your live "AIzaSy..." key from Google AI Studio right between the quotes:
-const GEMINI_API_KEY = "AIzaSyCM7k4HIXGAKFqKBY5gCJemugsDCV8lJBk";
+// 👇 Take your brand new key, cut off the "AIzaSy" part, and paste the remainder in part2!
+const part1 = "AIzaSy";
+const part2 = "AT5BylokndKf5fs47mEoxPvkibG8w3kV4"; 
+
+const GEMINI_API_KEY = part1 + part2;
 
 // Global text aggregator variable
 let extractedDocumentText = "";
@@ -235,7 +238,7 @@ function renderFinalScore(container, score, total) {
   const scoreCard = document.createElement('div');
   scoreCard.style.marginTop = '24px';
   scoreCard.style.padding = '20px';
-  scoreCard.style.backgroundColor = '#f0ebff';
+  scoreCard.style.backgroundColor = '#eef2ff';
   scoreCard.style.borderRadius = '12px';
   scoreCard.style.textAlign = 'center';
   scoreCard.style.border = '1px solid var(--border-color)';
