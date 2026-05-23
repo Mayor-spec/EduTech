@@ -49,8 +49,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       ]
     }`;
 
-    // Routed securely through v1beta without any config wrappers to avoid JSON payload field crashes
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    // Updated endpoint configuration referencing the correct active gemini-2.5-flash alias string
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -64,10 +64,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       throw new Error(resultData.error?.message || "Google API Connection Refused");
     }
 
-    // Safely parse out content tree layers
     let aiResponseText = resultData.candidates[0].content.parts[0].text;
     
-    // Clean out any accidental markdown syntax wrappers returning from raw AI strings
     if (aiResponseText.includes("```")) {
       aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
     }
@@ -130,7 +128,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
           if (answeredQuestionsCount === totalQuestions) {
             renderFinalScore(quizContainer, correctAnswersCount, totalQuestions);
             
-            // Sync straight to Firestore cloud parameters natively
             try {
               await addDoc(collection(db, "quiz_scores"), {
                 score: correctAnswersCount,
