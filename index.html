@@ -3,20 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EduBridge AI - Study Sprint</title>
+  <title>EduBridge AI — Sprint Workspace</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
   <style>
     :root {
-      --bg-main: #f5f3f9;
-      --bg-card: #ffffff;
-      --border-color: #e2dff0;
-      --text-main: #2d1a47;
-      --text-muted: #7c6e91;
-      --accent-color: #7b42f6;
-      --accent-hover: #6330d9;
+      --bg-main: #0b0a0f;
+      --bg-card: #121118;
+      --border-color: #221f30;
+      --accent-color: #7c5cff;
+      --accent-hover: #6949e6;
+      --text-main: #f4f3f6;
+      --text-muted: #9895a5;
+      --accent-success: #10b981;
       --accent-error: #ef4444;
-      --accent-success: #22c55e;
-      --radius-main: 16px;
-      --transition: all 0.2s ease-in-out;
     }
 
     * {
@@ -29,213 +32,233 @@
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
-      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
+      min-height: 100vh;
       padding: 20px;
     }
 
     .container {
       width: 100%;
-      max-width: 1100px;
+      max-width: 680px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      text-align: center;
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    .file-area {
+      margin-bottom: 16px;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: var(--bg-main);
+      border: 1px dashed var(--border-color);
+      border-radius: 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    input[type="file"]::-webkit-file-upload-button {
+      background: var(--border-color);
+      color: var(--text-main);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin-right: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      background-color: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      resize: none;
+      margin-bottom: 20px;
+    }
+
+    textarea:focus, input[type="file"]:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+
+    .primary-btn {
+      width: 100%;
+      background-color: var(--accent-color);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .primary-btn:disabled {
+      background-color: var(--border-color);
+      color: var(--text-muted);
+      cursor: not-allowed;
     }
 
     .hidden {
       display: none !important;
     }
 
-    #input-section {
-      text-align: center;
-      max-width: 600px;
-      margin: 0 auto 20px auto;
-      background: var(--bg-card);
-      padding: 40px;
-      border-radius: var(--radius-main);
-      border: 1px solid var(--border-color);
-      box-shadow: 0 10px 30px rgba(123, 66, 246, 0.04);
-    }
-
-    #input-section h1 {
-      font-size: 2.4rem;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      color: var(--text-main);
-      margin-bottom: 10px;
-    }
-
-    #input-section p {
-      color: var(--text-muted);
-      font-size: 1rem;
-      margin-bottom: 24px;
-    }
-
-    textarea {
-      width: 100%;
-      height: 180px;
-      background-color: var(--bg-main);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      color: var(--text-main);
-      padding: 16px;
-      font-size: 0.95rem;
-      line-height: 1.6;
-      resize: none;
-      outline: none;
-      transition: var(--transition);
-    }
-
-    textarea:focus {
-      border-color: var(--accent-color);
-      background-color: var(--bg-card);
-      box-shadow: 0 0 0 3px rgba(123, 66, 246, 0.1);
-    }
-
-    button#generate-btn {
-      margin-top: 16px;
-      width: 100%;
-      padding: 14px;
-      background-color: var(--accent-color);
-      color: #ffffff;
-      border: none;
-      border-radius: var(--radius-main);
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    button#generate-btn:hover {
-      background-color: var(--accent-hover);
-      transform: translateY(-1px);
-    }
-
-    button#generate-btn:disabled {
-      background-color: var(--text-muted);
-      cursor: not-allowed;
-      transform: none;
-    }
-
+    /* Bento Grid Workspace Styles */
     .bento-grid {
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 20px;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-top: 10px;
     }
 
-    .card {
-      background-color: var(--bg-card);
+    .bento-card {
+      background: var(--bg-main);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-main);
-      padding: 24px;
-      box-shadow: 0 4px 16px rgba(45, 26, 71, 0.01);
+      border-radius: 14px;
+      padding: 20px;
     }
 
-    .card h2 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 16px;
-      border-bottom: 2px solid var(--bg-main);
-      padding-bottom: 8px;
-      letter-spacing: -0.01em;
-    }
-
-    #summary-content {
-      color: var(--text-main);
-      font-size: 0.95rem;
-      line-height: 1.7;
-    }
-
-    #mnemonic-content {
-      font-weight: 600;
-      color: var(--accent-color);
-      background-color: #f0ebff;
-      padding: 14px;
-      border-radius: 12px;
-      line-height: 1.5;
-    }
-
-    .quiz-question {
-      margin-bottom: 24px;
-      border-bottom: 1px solid var(--bg-main);
-      padding-bottom: 16px;
-    }
-
-    .quiz-question:last-child {
-      margin-bottom: 0;
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    .quiz-question p {
-      font-size: 0.95rem;
-      font-weight: 600;
+    .card-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
       margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .content-box {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--text-main);
+    }
+
+    /* Quiz Rendering UI Components */
+    .quiz-question {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .quiz-question:last-child {
+      border-bottom: none;
+    }
+
+    .options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
     }
 
     .option-btn {
-      display: block;
-      width: 100%;
       text-align: left;
-      background-color: var(--bg-main);
+      padding: 12px;
+      background: var(--bg-card);
       border: 1px solid var(--border-color);
+      border-radius: 8px;
       color: var(--text-main);
-      padding: 12px 16px;
-      margin-bottom: 8px;
-      border-radius: 10px;
-      font-size: 0.9rem;
       cursor: pointer;
-      transition: var(--transition);
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
     }
 
     .option-btn:hover:not(:disabled) {
       border-color: var(--accent-color);
-      background-color: #fbfaff;
+      background: rgba(124, 92, 255, 0.05);
     }
 
-    .option-btn:disabled {
-      cursor: not-allowed;
+    .quiz-explanation {
+      margin-top: 10px;
+      animation: fadeIn 0.3s ease forwards;
     }
 
-    @media (max-width: 768px) {
-      .bento-grid {
-        grid-template-columns: 1fr;
-      }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    
-    <section id="input-section">
-      <h1>EduBridge AI</h1>
-      <p>Paste your lecture notes below to generate an automated Study Sprint.</p>
-      <textarea id="notes-input" placeholder="Paste your study materials here..."></textarea>
-      <button id="generate-btn">Generate Study Sprint</button>
-    </section>
 
-    <section id="workspace-section" class="hidden">
+  <div class="container">
+    <h1>EduBridge AI</h1>
+    <p class="subtitle">Instant study summaries, mnemonics, and test metrics</p>
+
+    <div id="input-section">
+      <div class="file-area">
+        <label for="file-upload">Upload Lecture Materials:</label>
+        <input type="file" id="file-upload" accept=".pdf,.docx,.pptx">
+      </div>
+
+      <label for="notes-input">Or Paste Raw Study Text:</label>
+      <textarea id="notes-input" placeholder="Type or paste your lecture content here..."></textarea>
+
+      <button id="generate-btn" class="primary-btn">Generate Study Sprint</button>
+    </div>
+
+    <div id="workspace-section" class="hidden">
       <div class="bento-grid">
         
-        <div class="card summary-card">
-          <h2>📚 Study Summary</h2>
-          <div id="summary-content"></div>
+        <div class="bento-card">
+          <div class="card-title">💡 Core Sprint Summary</div>
+          <div id="summary-content" class="content-box">Processing elements...</div>
         </div>
-        
-        <div class="card mnemonic-card">
-          <h2>🧠 Memory Trick</h2>
-          <p id="mnemonic-content"></p>
+
+        <div class="bento-card">
+          <div class="card-title">🧠 Retention Mnemonic</div>
+          <div id="mnemonic-content" class="content-box" style="font-weight: 600; color: #a78bfa;">Processing elements...</div>
         </div>
-        
-        <div class="card quiz-card">
-          <h2>📝 Active Recall Quiz</h2>
-          <div id="quiz-content"></div>
+
+        <div class="bento-card">
+          <div class="card-title">📝 Active Sprint Assessment</div>
+          <div id="quiz-content" class="content-box">Processing elements...</div>
         </div>
-        
+
       </div>
-    </section>
-    
-  </main>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>
