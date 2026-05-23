@@ -20,18 +20,90 @@ const db = getFirestore(app);
 // ==========================================================================
 // 2. DIRECT GEMINI BROWSER CONNECTION
 // ==========================================================================
-// 👇 Paste your live "AIzaSy..." key from Google AI Studio right between the quotes:
 const GEMINI_API_KEY = "AIzaSyCM7k4HIXGAKFqKBY5gCJemugsDCV8lJBk";
 
+// Global text aggregator variable
+let extractedDocumentText = "";
+
+// Dynamic File Input Listener to parse PDFs, Word Docs, and PowerPoints
+document.getElementById('file-upload')?.addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const uploadBtn = document.getElementById('generate-btn');
+  uploadBtn.disabled = true;
+  uploadBtn.innerText = "Extracting document text...";
+
+  try {
+    const extension = file.name.split('.').pop().toLowerCase();
+    const arrayBuffer = await file.arrayBuffer();
+
+    if (extension === 'pdf') {
+      // Load standard PDFJS binary library dynamically
+      const pdfjsLib = window['pdfjs-dist/build/pdf'];
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+      
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(" ") + "\n";
+      }
+      extractedDocumentText = text;
+
+    } else if (extension === 'docx') {
+      // Load Mammoth library engine for word text conversion
+      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      extractedDocumentText = result.value;
+
+    } else if (extension === 'pptx') {
+      // Open zip container layer of PPTXML slides layout structures
+      const zip = await JSZip.loadAsync(file);
+      let text = "";
+      const slideFiles = Object.keys(zip.files).filter(name => name.startsWith("ppt/slides/slide"));
+      
+      for (let slideFile of slideFiles) {
+        const slideXml = await zip.files[slideFile].async("text");
+        const matches = slideXml.match(/<a:t[^>]*>([^<]*)<\/a:t>/g);
+        if (matches) {
+          text += matches.map(val => val.replace(/<[^>]*>/g, '')).join(" ") + "\n";
+        }
+      }
+      extractedDocumentText = text;
+    } else {
+      alert("Unsupported file extension. Please use PDF, DOCX, or PPTX.");
+    }
+
+    if (extractedDocumentText.trim()) {
+      document.getElementById('notes-input').value = extractedDocumentText;
+      alert(`🎉 Successfully extracted content from "${file.name}"!`);
+    }
+
+  } catch (err) {
+    console.error("Extraction Failure:", err);
+    alert("Could not extract text from document layer: " + err.message);
+  } finally {
+    uploadBtn.disabled = false;
+    uploadBtn.innerText = "Generate Study Sprint";
+  }
+});
+
+// Run Core AI Analysis Block Execution
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
-  if (!notesText) return alert("Please paste some study materials first!");
+  if (!notesText) return alert("Please paste your text or upload a study document first!");
 
   document.getElementById('generate-btn').innerText = "Analyzing with Google Gemini...";
   document.getElementById('generate-btn').disabled = true;
 
   try {
-    const promptText = `You are an expert academic tutor. Analyze these study notes. Provide a clean, bulleted summary, one smart mnemonic device to remember the main topic, and exactly 3 multiple choice questions based on it.
+    const promptText = `You are an expert academic examiner. Analyze these study notes. Provide a clean, bulleted summary, one smart mnemonic device to remember the main topic, and exactly 3 multiple choice questions based on it.
+    
+    CRITICAL QUESTION GUIDELINES:
+    - Write the multiple choice questions as professional standalone exam questions.
+    - NEVER use introductory filler phrases like "According to the notes", "Based on the text", "As mentioned in your slide", or "From your text". 
+    - Just ask the fundamental questions directly.
     
     Notes: ${notesText}
     
@@ -64,14 +136,12 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     }
 
     let aiResponseText = resultData.candidates[0].content.parts[0].text;
-    
     if (aiResponseText.includes("```")) {
       aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
     }
     
     const data = JSON.parse(aiResponseText.trim());
 
-    // Safe formatting handling for summary whether it returns as an array or a string
     let formattedSummary = "";
     if (Array.isArray(data.summary)) {
       formattedSummary = data.summary.map(item => `• ${item}`).join('<br>');
@@ -81,7 +151,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       formattedSummary = JSON.stringify(data.summary);
     }
 
-    // Populate user layout elements safely
     document.getElementById('summary-content').innerHTML = formattedSummary;
     document.getElementById('mnemonic-content').innerText = data.mnemonic || "Review notes thoroughly to establish baseline parameters.";
 
@@ -92,10 +161,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     let totalQuestions = quizData.length;
     let correctAnswersCount = 0;
     let answeredQuestionsCount = 0;
-
-    if (totalQuestions === 0) {
-      quizContainer.innerHTML = "<p style='color:var(--text-muted);'>Quiz generation formatting retry suggested.</p>";
-    }
 
     quizData.forEach((q, qIndex) => {
       const qElement = document.createElement('div');
@@ -114,7 +179,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         btn.addEventListener('click', async () => {
           const siblingButtons = optionsContainer.querySelectorAll('.option-btn');
           siblingButtons.forEach(b => b.disabled = true);
-
           answeredQuestionsCount++;
 
           if (option === q.correctAnswer) {
@@ -142,7 +206,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
           if (answeredQuestionsCount === totalQuestions) {
             renderFinalScore(quizContainer, correctAnswersCount, totalQuestions);
-            
             try {
               await addDoc(collection(db, "quiz_scores"), {
                 score: correctAnswersCount,
@@ -155,10 +218,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
             }
           }
         });
-
         optionsContainer.appendChild(btn);
       });
-      
       qElement.appendChild(optionsContainer);
       quizContainer.appendChild(qElement);
     });
