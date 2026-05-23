@@ -35,7 +35,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     Notes: ${notesText}
     
-    You MUST respond with a raw JSON object matching this exact structure:
+    You MUST respond ONLY with a raw JSON object matching this exact structure, do not include markdown blocks like \`\`\`json:
     {
       "summary": "Your bulleted study summary text here",
       "mnemonic": "Your memory device trick text here",
@@ -49,15 +49,12 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       ]
     }`;
 
-    // Direct fetch using the verified 'v1' API route and 'response_mime_type' snake_case field configuration
+    // Cleaned payload: completely removed generationConfig to prevent field errors
     const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { 
-          response_mime_type: "application/json" 
-        }
+        contents: [{ parts: [{ text: promptText }] }]
       })
     });
 
@@ -67,7 +64,14 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       throw new Error(resultData.error?.message || "Google API Connection Refused");
     }
 
-    const aiResponseText = resultData.candidates[0].content.parts[0].text;
+    // Extract text safely from the standard response tree
+    let aiResponseText = resultData.candidates[0].content.parts[0].text;
+    
+    // Clean out markdown wrappers if Gemini returns them accidentally
+    if (aiResponseText.includes("```")) {
+      aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
+    }
+    
     const data = JSON.parse(aiResponseText.trim());
 
     // Populate purple Bento layout cards
