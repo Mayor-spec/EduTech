@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ==========================================================================
-// 1. FIREBASE CONFIGURATION (Wired directly to your project)
+// 1. FIREBASE CONFIGURATION
 // ==========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyCUkF92Vre4Z5ENVVT8LHKHkUo55FFV0Rs",
@@ -18,8 +18,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ==========================================================================
-// 2. CORE FRONTEND WORKFLOW PIPELINE
+// 🚨 DIRECT GEMINI BROWSER CONNECTION (FAST SHORTCUT)
 // ==========================================================================
+// Paste your live "AIzaSy..." key from Google AI Studio directly between these quotes:
+const GEMINI_API_KEY = "AIzaSyCM7k4HIXGAKFqKBY5gCJemugsDCV8lJBk";
+
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
   if (!notesText) return alert("Please paste some study materials first!");
@@ -28,16 +31,42 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   document.getElementById('generate-btn').disabled = true;
 
   try {
-    // Talk directly to your Vercel backend file using a relative server route
-    const response = await fetch('/api/generate', {
+    const promptText = `You are an expert academic tutor. Analyze these study notes. Provide a clean, bulleted summary, one smart mnemonic device to remember the main topic, and exactly 3 multiple choice questions based on it.
+    
+    Notes: ${notesText}
+    
+    You MUST respond with a raw JSON object matching this exact structure:
+    {
+      "summary": "Your bulleted study summary text here",
+      "mnemonic": "Your memory device trick text here",
+      "quiz": [
+        {
+          "question": "Question 1 text?",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correctAnswer": "The exact matching text of the correct option",
+          "explanation": "Brief explanation why this option is correct"
+        }
+      ]
+    }`;
+
+    // Connect straight to Google's live gateway from the browser
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: notesText })
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      })
     });
 
-    const data = await response.json();
+    const resultData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(resultData.error?.message || "Google API Connection Refused");
+    }
 
-    if (data.error) throw new Error(data.error);
+    const aiResponseText = resultData.candidates[0].content.parts[0].text;
+    const data = JSON.parse(aiResponseText.trim());
 
     // Populate purple Bento layout cards
     document.getElementById('summary-content').innerHTML = data.summary.replace(/\n/g, '<br>');
@@ -89,13 +118,13 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
           const exp = document.createElement('p');
           exp.className = 'quiz-explanation';
-          exp.innerHTML = `<small style="display:block; margin-top:8px; color:var(--text-muted);"> <strong>Explanation:</strong> ${q.explanation}</small>`;
+          exp.innerHTML = `<small style="display:block; margin-top:8px; color:var(--text-muted);">💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
           qElement.appendChild(exp);
 
           if (answeredQuestionsCount === totalQuestions) {
             renderFinalScore(quizContainer, correctAnswersCount, totalQuestions);
             
-            // Log score directly into your Firestore cloud database natively
+            // Sync directly to Firestore
             try {
               await addDoc(collection(db, "quiz_scores"), {
                 score: correctAnswersCount,
@@ -103,7 +132,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
                 percentage: Math.round((correctAnswersCount / totalQuestions) * 100),
                 timestamp: serverTimestamp()
               });
-              console.log("Metrics securely saved on Google Cloud Firestore!");
+              console.log("Metrics synchronized!");
             } catch (dbError) {
               console.error("Firestore Error:", dbError);
             }
@@ -121,8 +150,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     document.getElementById('workspace-section').classList.remove('hidden');
 
   } catch (error) {
-    console.error("Error:", error);
-    alert("Something went wrong processing your study data.");
+    console.error("Error Details:", error);
+    alert("⚠️ Live Error Status: " + error.message);
   } finally {
     document.getElementById('generate-btn').innerText = "Generate Study Sprint";
     document.getElementById('generate-btn').disabled = false;
@@ -142,7 +171,7 @@ function renderFinalScore(container, score, total) {
   scoreCard.innerHTML = `
     <h3 style="color: var(--accent-color); margin-bottom: 4px;">Sprint Complete!</h3>
     <p style="font-size: 1.6rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">${score} / ${total} (${percentage}%)</p>
-    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">Metrics synchronized successfully to your Google Cloud database.</p>
+    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">Metrics synchronized successfully to your Firestore database.</p>
     <button onclick="window.location.reload();" style="margin-top:14px; padding: 10px 20px; background: var(--accent-color); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem;">Start New Sprint</button>
   `;
   container.appendChild(scoreCard);
