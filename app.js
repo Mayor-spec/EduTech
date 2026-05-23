@@ -105,12 +105,12 @@ document.getElementById('prev-card-btn')?.addEventListener('click', () => {
 function renderFlashcard() {
   if (globalFlashcardsDeck.length === 0) return;
   const card = globalFlashcardsDeck[currentCardIndex];
-  document.getElementById('card-front-text').innerText = card.front;
-  document.getElementById('card-back-text').innerText = card.back;
+  document.getElementById('card-front-text').innerHTML = card.front;
+  document.getElementById('card-back-text').innerHTML = card.back;
   document.getElementById('card-index-indicator').innerText = `${currentCardIndex + 1} / ${globalFlashcardsDeck.length}`;
 }
 
-// core generation loop
+// Core generation loop
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
   if (!notesText) return alert("Please input or upload study assets first!");
@@ -120,26 +120,30 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   document.getElementById('generate-btn').disabled = true;
 
   try {
-    const promptText = `You are an expert high-yield technical academic flashcard tutor. Analyze these notes. Create exactly 4 high-yield flashcards covering the core text definitions, one smart memory mnemonic keyword breakdown, and an active question assessment layout.
+    const promptText = `You are an expert high-yield academic tutor specializing in visual layout design systems. 
+    Analyze these notes and transform them into exactly 4 concept flashcards, one smart memory mnemonic keyword breakdown, and an active question assessment layout.
     
     Notes: ${notesText}
     
     You MUST respond ONLY with a raw JSON object matching this exact structure, do not include markdown blocks like \`\`\`json:
     {
       "flashcards": [
-        { "front": "Core Question / Flashcard Topic Term?", "back": "Precise, standalone high-yield definition answer explanation" }
+        { 
+          "front": "🎯 <strong>Core Concept Name</strong><br><small>Short 1-sentence foundational context identifier</small>", 
+          "back": "⚡ <strong>High-Yield Summary Keypoints:</strong><br>• Core mechanism or criteria point 1<br>• Diagnostic standard or critical detail point 2<br>• High-frequency exam pivot rule point 3" 
+        }
       ],
       "mnemonic": "💡 KEYWORD\\n\\n• K - Concept One\\n• E - Concept Two",
       "quiz": [
         {
           "question": "Standalone direct multiple choice question?",
-          "options": ["A", "B", "C", "D"],
+          "options": ["Option A", "Option B", "Option C", "Option D"],
           "correctAnswer": "The exact correct matching text string",
           "explanation": "Brief context validation sentence."
         }
       ]
     }
-    CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements.`;
+    CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements. Do not use filler phrases like 'According to the notes'.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
@@ -180,18 +184,30 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         const btn = document.createElement('button');
         btn.innerText = option;
         btn.className = 'option-btn';
+        
         btn.addEventListener('click', async () => {
-          optionsContainer.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+          const siblingButtons = optionsContainer.querySelectorAll('.option-btn');
+          siblingButtons.forEach(b => b.disabled = true);
           answeredQuestionsCount++;
 
           if (option === q.correctAnswer) {
             btn.style.backgroundColor = 'var(--accent-success)';
             btn.style.color = '#fff';
+            btn.style.borderColor = 'var(--accent-success)';
             correctAnswersCount++;
           } else {
             btn.style.backgroundColor = 'var(--accent-error)';
             btn.style.color = '#fff';
-            optionsContainer.forEach?.(b => { if(b.innerText === q.correctAnswer) b.style.border = '2px dashed var(--accent-success)'; });
+            btn.style.borderColor = 'var(--accent-error)';
+            
+            // Fixed loop target to instantly highlight the true correct choice container
+            siblingButtons.forEach(b => {
+              if (b.innerText === q.correctAnswer) {
+                b.style.border = '2px dashed var(--accent-success)';
+                b.style.color = 'var(--accent-success)';
+                b.style.backgroundColor = '#f0fdf4';
+              }
+            });
           }
 
           const exp = document.createElement('p');
@@ -199,7 +215,9 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
           exp.innerHTML = `<small>💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
           qElement.appendChild(exp);
 
-          if (answeredQuestionsCount === totalQuestions) renderFinalScore(quizContainer, correctAnswersCount, totalQuestions);
+          if (answeredQuestionsCount === totalQuestions) {
+            renderFinalScore(quizContainer, correctAnswersCount, totalQuestions);
+          }
         });
         optionsContainer.appendChild(btn);
       });
@@ -228,8 +246,8 @@ function renderFinalScore(container, score, total) {
   const percentage = Math.round((score / total) * 100);
   scoreCard.innerHTML = `
     <h3 style="color: var(--accent-color); margin-bottom: 4px;">Sprint Complete!</h3>
-    <p style="font-size: 1.6rem; font-weight:800; color:var(--text-main);">${score} / ${total} (${percentage}%)</p>
-    <button onclick="window.location.reload();" style="margin-top:14px; padding: 10px 20px; background:var(--accent-color); color:white; border:none; border-radius:8px; cursor:pointer;">New Sprint</button>
+    <p style="font-size: 1.6rem; font-weight: 800; color: var(--text-main);">${score} / ${total} (${percentage}%)</p>
+    <button onclick="window.location.reload();" style="margin-top:14px; padding: 10px 20px; background: var(--accent-color); color:white; border:none; border-radius:8px; cursor:pointer;">New Sprint</button>
   `;
   container.appendChild(scoreCard);
 }
