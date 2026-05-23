@@ -55,7 +55,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { responseMimeType: "application/json" }
+        generationConfig: { response_mime_type: "application/json" }
       })
     });
 
