@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ==========================================================================
-// 1. FIREBASE CONFIGURATION
+// 1. FIREBASE CONFIGURATION (Wired directly to your project)
 // ==========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyCUkF92Vre4Z5ENVVT8LHKHkUo55FFV0Rs",
@@ -18,7 +18,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ==========================================================================
-// 🚨 DIRECT GEMINI BROWSER CONNECTION (FAST SHORTCUT)
+// 2. DIRECT GEMINI BROWSER CONNECTION (FAST SHORTCUT)
 // ==========================================================================
 // Paste your live "AIzaSy..." key from Google AI Studio directly between these quotes:
 const GEMINI_API_KEY = "AIzaSyCM7k4HIXGAKFqKBY5gCJemugsDCV8lJBk";
@@ -49,17 +49,17 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       ]
     }`;
 
-            // Connect straight to Google's live gateway from the browser
+    // Direct fetch using the verified 'v1' API route and 'response_mime_type' snake_case field configuration
     const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { response_mime_type: "application/json" }
+        generationConfig: { 
+          response_mime_type: "application/json" 
+        }
       })
     });
-
-
 
     const resultData = await response.json();
     
@@ -126,7 +126,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
           if (answeredQuestionsCount === totalQuestions) {
             renderFinalScore(quizContainer, correctAnswersCount, totalQuestions);
             
-            // Sync directly to Firestore
+            // Sync metrics straight to Google Cloud Firestore database instance
             try {
               await addDoc(collection(db, "quiz_scores"), {
                 score: correctAnswersCount,
