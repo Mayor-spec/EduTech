@@ -20,6 +20,7 @@ const db = getFirestore(app);
 // ==========================================================================
 // 2. DIRECT GEMINI BROWSER CONNECTION
 // ==========================================================================
+// 👇 Paste your live "AIzaSy..." key from Google AI Studio right between the quotes:
 const GEMINI_API_KEY = "AIzaSyCM7k4HIXGAKFqKBY5gCJemugsDCV8lJBk";
 
 // Global text aggregator variable
@@ -39,7 +40,6 @@ document.getElementById('file-upload')?.addEventListener('change', async (event)
     const arrayBuffer = await file.arrayBuffer();
 
     if (extension === 'pdf') {
-      // Load standard PDFJS binary library dynamically
       const pdfjsLib = window['pdfjs-dist/build/pdf'];
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
       
@@ -53,12 +53,10 @@ document.getElementById('file-upload')?.addEventListener('change', async (event)
       extractedDocumentText = text;
 
     } else if (extension === 'docx') {
-      // Load Mammoth library engine for word text conversion
       const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
       extractedDocumentText = result.value;
 
     } else if (extension === 'pptx') {
-      // Open zip container layer of PPTXML slides layout structures
       const zip = await JSZip.loadAsync(file);
       let text = "";
       const slideFiles = Object.keys(zip.files).filter(name => name.startsWith("ppt/slides/slide"));
@@ -98,25 +96,21 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   document.getElementById('generate-btn').disabled = true;
 
   try {
-    const promptText = `You are an expert academic examiner. Analyze these study notes. Provide a clean, bulleted summary, one smart mnemonic device to remember the main topic, and exactly 3 multiple choice questions based on it.
+    const promptText = `You are a world-class UI/UX focused academic tutor specializing in high-yield medical and technical retention. 
+    Analyze these study notes and transform them into a clean, highly engaging, micro-learning dashboard. Do not return flat walls of text.
+
+    Notes to analyze: ${notesText}
     
-    CRITICAL QUESTION GUIDELINES:
-    - Write the multiple choice questions as professional standalone exam questions.
-    - NEVER use introductory filler phrases like "According to the notes", "Based on the text", "As mentioned in your slide", or "From your text". 
-    - Just ask the fundamental questions directly.
-    
-    Notes: ${notesText}
-    
-    You MUST respond ONLY with a raw JSON object matching this exact structure, do not include markdown blocks like \`\`\`json:
+    You MUST respond ONLY with a raw JSON object matching this exact structure. Do not include markdown blocks like \`\`\`json:
     {
-      "summary": "Your bulleted study summary text here",
-      "mnemonic": "Your memory device trick text here",
+      "summary": "<h3>🎯 The Essence</h3><p>A single, powerful, ultra-concise sentence summarizing the core concept.</p><br><h3>⚡ High-Yield Anchors</h3>• <strong>Key Point 1:</strong> Use bold terms and clean explanations.<br>• <strong>Key Point 2:</strong> Focus on mechanism, diagnosis, or critical rules.<br><br><h3>⚠️ Critical Watch-outs</h3><p>A short bulleted or highlighted note on high-frequency exam traps, limitations, or clinical mistakes.</p>",
+      "mnemonic": "💡 KEYWORD\\n\\n• K - Concept One\\n• E - Concept Two\\n• Y - Concept Three",
       "quiz": [
         {
-          "question": "Question 1 text?",
+          "question": "A direct, standalone examination question? (No filler phrases like 'According to the notes')",
           "options": ["Option A", "Option B", "Option C", "Option D"],
           "correctAnswer": "The exact matching text of the correct option",
-          "explanation": "Brief explanation why this option is correct"
+          "explanation": "A sharp, insightful 1-sentence explanation of why this is correct."
         }
       ]
     }`;
@@ -142,6 +136,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     const data = JSON.parse(aiResponseText.trim());
 
+    // Safe formatting handling for summary strings/HTML elements
     let formattedSummary = "";
     if (Array.isArray(data.summary)) {
       formattedSummary = data.summary.map(item => `• ${item}`).join('<br>');
@@ -152,7 +147,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     }
 
     document.getElementById('summary-content').innerHTML = formattedSummary;
-    document.getElementById('mnemonic-content').innerText = data.mnemonic || "Review notes thoroughly to establish baseline parameters.";
+    document.getElementById('mnemonic-content').innerHTML = data.mnemonic ? data.mnemonic.replace(/\n/g, '<br>') : "Review notes thoroughly to establish baseline parameters.";
 
     const quizContainer = document.getElementById('quiz-content');
     quizContainer.innerHTML = ''; 
