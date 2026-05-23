@@ -89,7 +89,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
           const exp = document.createElement('p');
           exp.className = 'quiz-explanation';
-          exp.innerHTML = `<small style="display:block; margin-top:8px; color:var(--text-muted);">💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
+          exp.innerHTML = `<small style="display:block; margin-top:8px; color:var(--text-muted);"> <strong>Explanation:</strong> ${q.explanation}</small>`;
           qElement.appendChild(exp);
 
           if (answeredQuestionsCount === totalQuestions) {
