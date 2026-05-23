@@ -29,10 +29,13 @@ let extractedDocumentText = "";
 let globalFlashcardsDeck = [];
 let currentCardIndex = 0;
 
-// Handle 3D Flipping Event
-const widget = document.getElementById('flashcard-widget');
-widget?.addEventListener('click', () => {
-  widget.classList.toggle('flipped');
+// Setup Individual Widget 3D Flip Listeners
+document.getElementById('summary-widget')?.addEventListener('click', () => {
+  document.getElementById('summary-widget').classList.toggle('flipped');
+});
+
+document.getElementById('mnemonic-widget')?.addEventListener('click', () => {
+  document.getElementById('mnemonic-widget').classList.toggle('flipped');
 });
 
 // Dynamic File Input Listener
@@ -83,9 +86,10 @@ document.getElementById('file-upload')?.addEventListener('change', async (event)
   }
 });
 
-// Navigation Controllers
+// Summary Navigation Controllers
 document.getElementById('next-card-btn')?.addEventListener('click', () => {
   if (globalFlashcardsDeck.length === 0) return;
+  const widget = document.getElementById('summary-widget');
   widget.classList.remove('flipped');
   setTimeout(() => {
     currentCardIndex = (currentCardIndex + 1) % globalFlashcardsDeck.length;
@@ -95,6 +99,7 @@ document.getElementById('next-card-btn')?.addEventListener('click', () => {
 
 document.getElementById('prev-card-btn')?.addEventListener('click', () => {
   if (globalFlashcardsDeck.length === 0) return;
+  const widget = document.getElementById('summary-widget');
   widget.classList.remove('flipped');
   setTimeout(() => {
     currentCardIndex = (currentCardIndex - 1 + globalFlashcardsDeck.length) % globalFlashcardsDeck.length;
@@ -105,12 +110,12 @@ document.getElementById('prev-card-btn')?.addEventListener('click', () => {
 function renderFlashcard() {
   if (globalFlashcardsDeck.length === 0) return;
   const card = globalFlashcardsDeck[currentCardIndex];
-  document.getElementById('card-front-text').innerHTML = card.front;
-  document.getElementById('card-back-text').innerHTML = card.back;
+  document.getElementById('summary-front-text').innerHTML = card.front;
+  document.getElementById('summary-back-text').innerHTML = card.back;
   document.getElementById('card-index-indicator').innerText = `${currentCardIndex + 1} / ${globalFlashcardsDeck.length}`;
 }
 
-// Core generation loop
+// Core Generation Pipeline
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
   if (!notesText) return alert("Please input or upload study assets first!");
@@ -120,8 +125,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   document.getElementById('generate-btn').disabled = true;
 
   try {
-    const promptText = `You are an expert high-yield academic tutor specializing in visual layout design systems. 
-    Analyze these notes and transform them into exactly 4 concept flashcards, one smart memory mnemonic keyword breakdown, and an active question assessment layout.
+    const promptText = `You are a world-class high-yield medical and technical academic tutor. Analyze these notes and generate exactly 4 summary concept flashcards, one interactive word acronym mnemonic card object, and an active question assessment layout.
     
     Notes: ${notesText}
     
@@ -129,11 +133,12 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     {
       "flashcards": [
         { 
-          "front": "🎯 <strong>Core Concept Name</strong><br><small>Short 1-sentence foundational context identifier</small>", 
-          "back": "⚡ <strong>High-Yield Summary Keypoints:</strong><br>• Core mechanism or criteria point 1<br>• Diagnostic standard or critical detail point 2<br>• High-frequency exam pivot rule point 3" 
+          "front": "🎯 <strong style='font-size:1.1rem;'>Core Concept Title</strong><br><br>What is the fundamental objective or process name?", 
+          "back": "<strong style='color:#1e40af;'>⚡ Key High-Yield Insights:</strong><br><br>• Strategic diagnostic standard or path mechanism detail 1<br>• High-yield laboratory identification criteria 2<br>• Important clinical rule or testing trap detail 3" 
         }
       ],
-      "mnemonic": "💡 KEYWORD\\n\\n• K - Concept One\\n• E - Concept Two",
+      "mnemonic_front": "🧠 <strong style='font-size:1.1rem;'>Retention Acronym</strong><br><br>The high-yield word token key mnemonic is: <strong style='color:#b91c1c; font-size:1.2rem;'>KEYWORD</strong>",
+      "mnemonic_back": "<strong style='color:#92400e;'>💡 High-Yield Memory Breakdowns:</strong><br><br>• <strong>K</strong> - Functional concept point 1<br>• <strong>E</strong> - Functional concept point 2<br>• <strong>Y</strong> - Functional concept point 3",
       "quiz": [
         {
           "question": "Standalone direct multiple choice question?",
@@ -159,13 +164,16 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     const data = JSON.parse(aiResponseText.trim());
 
-    // Initialize Global Flashcard Set Arrays
+    // Render Summary Deck
     globalFlashcardsDeck = Array.isArray(data.flashcards) ? data.flashcards : [];
     currentCardIndex = 0;
     renderFlashcard();
 
-    document.getElementById('mnemonic-content').innerHTML = data.mnemonic ? data.mnemonic.replace(/\n/g, '<br>') : "Ready.";
+    // Render Mnemonic Card Sides
+    document.getElementById('mnemonic-front-text').innerHTML = data.mnemonic_front || "Mnemonic Key Anchor";
+    document.getElementById('mnemonic-back-text').innerHTML = data.mnemonic_back || "Breakdown metrics details.";
 
+    // Render Quiz Elements with Correct Highlight Mapping
     const quizContainer = document.getElementById('quiz-content');
     quizContainer.innerHTML = ''; 
     const quizData = Array.isArray(data.quiz) ? data.quiz : [];
@@ -200,7 +208,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
             btn.style.color = '#fff';
             btn.style.borderColor = 'var(--accent-error)';
             
-            // Fixed loop target to instantly highlight the true correct choice container
             siblingButtons.forEach(b => {
               if (b.innerText === q.correctAnswer) {
                 b.style.border = '2px dashed var(--accent-success)';
