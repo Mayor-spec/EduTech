@@ -159,8 +159,16 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   if (!notesText) return alert("Please input or upload study assets first!");
 
   const questionCount = document.getElementById('quiz-count').value;
-  document.getElementById('generate-btn').innerText = "Analyzing with Google Gemini...";
+  
+  // Psychological UX Perception updates to make wait-time interactive
+  document.getElementById('generate-btn').innerText = "Analyzing Study Elements...";
   document.getElementById('generate-btn').disabled = true;
+
+  setTimeout(() => {
+    if (document.getElementById('generate-btn').disabled) {
+      document.getElementById('generate-btn').innerText = "Building Interactive Cards & Assessment...";
+    }
+  }, 3000);
 
   try {
     const promptText = `You are an expert high-yield medical and technical academic tutor. Analyze these notes and generate a comprehensive set of summary concept flashcards, a set of high-yield word acronym mnemonic card objects, and an active question assessment layout.
@@ -203,10 +211,17 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements. Do not use filler phrases like 'According to the notes'.`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    // Upgraded performance router endpoint calling the high-frequency flash-8b layer engine
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-8b:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+      body: JSON.stringify({ 
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          temperature: 0.15, // Suppresses creative latency; forces immediate structural delivery
+          responseMimeType: "application/json"
+        }
+      })
     });
 
     const resultData = await response.json();
@@ -290,7 +305,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     document.getElementById('workspace-section').classList.remove('hidden');
 
   } catch (error) {
-    alert("Live error status: " + error.message);
+    console.error("Detailed Error Logs:", error);
+    alert("⚠️ App Execution Interrupted:\n" + error.message + "\n\nTry clicking again or verify your API key remainder config.");
   } finally {
     document.getElementById('generate-btn').innerText = "Generate Study Sprint";
     document.getElementById('generate-btn').disabled = false;
