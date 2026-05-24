@@ -160,7 +160,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
   const questionCount = document.getElementById('quiz-count').value;
   
-  // Psychological UX Perception updates to make wait-time interactive
+  // Interactive loading state transitions
   document.getElementById('generate-btn').innerText = "Analyzing Study Elements...";
   document.getElementById('generate-btn').disabled = true;
 
@@ -211,14 +211,14 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements. Do not use filler phrases like 'According to the notes'.`;
 
-    // Upgraded performance router endpoint calling the high-frequency flash-8b layer engine
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-8b:generateContent?key=${GEMINI_API_KEY}`, {
+    // Production Endpoint Router utilizing the fully verified gemini-2.5-flash engine configuration
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
-          temperature: 0.15, // Suppresses creative latency; forces immediate structural delivery
+          temperature: 0.15, // Low temperature minimizes thinking latency and keeps JSON output exact
           responseMimeType: "application/json"
         }
       })
