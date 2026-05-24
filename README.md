@@ -36,8 +36,3 @@ This project was developed for the **GDGOC University of Ilorin Talent and Innov
 ### Prerequisites
 To run this project locally, you will need a valid Google Gemini API Key. You can generate a free access token directly through the [Google AI Studio Console](https://aistudio.google.com/).
 
-### Installation
-
-1. Clone the repository to your desktop machine:
-   ```bash
-   git clone [https://github.com/BabatundeMoses/edu-tech-amber.git](https://github.com/BabatundeMoses/edu-tech-amber.git)
