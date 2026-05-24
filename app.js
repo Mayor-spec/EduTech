@@ -18,7 +18,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ==========================================================================
-// 2. DIRECT GEMINI CONNECTION
+// 2. DIRECT GEMINI CONNECTION (Scraper-Proof Format)
 // ==========================================================================
 const part1 = "AIzaSy";
 const part2 = "AT5BylokndKf5fs47mEoxPvkibG8w3kV4"; 
@@ -26,8 +26,13 @@ const part2 = "AT5BylokndKf5fs47mEoxPvkibG8w3kV4";
 const GEMINI_API_KEY = part1 + part2;
 
 let extractedDocumentText = "";
+
+// Dynamic volume tracking decks
 let globalFlashcardsDeck = [];
 let currentCardIndex = 0;
+
+let globalMnemonicsDeck = [];
+let currentMnemonicIndex = 0;
 
 // Setup Individual Widget 3D Flip Listeners
 document.getElementById('summary-widget')?.addEventListener('click', () => {
@@ -87,7 +92,8 @@ document.getElementById('file-upload')?.addEventListener('change', async (event)
 });
 
 // Summary Navigation Controllers
-document.getElementById('next-card-btn')?.addEventListener('click', () => {
+document.getElementById('next-card-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (globalFlashcardsDeck.length === 0) return;
   const widget = document.getElementById('summary-widget');
   widget.classList.remove('flipped');
@@ -97,7 +103,8 @@ document.getElementById('next-card-btn')?.addEventListener('click', () => {
   }, 150);
 });
 
-document.getElementById('prev-card-btn')?.addEventListener('click', () => {
+document.getElementById('prev-card-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (globalFlashcardsDeck.length === 0) return;
   const widget = document.getElementById('summary-widget');
   widget.classList.remove('flipped');
@@ -107,12 +114,43 @@ document.getElementById('prev-card-btn')?.addEventListener('click', () => {
   }, 150);
 });
 
+// Mnemonic Navigation Controllers
+document.getElementById('next-mnemonic-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (globalMnemonicsDeck.length === 0) return;
+  const widget = document.getElementById('mnemonic-widget');
+  widget.classList.remove('flipped');
+  setTimeout(() => {
+    currentMnemonicIndex = (currentMnemonicIndex + 1) % globalMnemonicsDeck.length;
+    renderMnemonicCard();
+  }, 150);
+});
+
+document.getElementById('prev-mnemonic-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (globalMnemonicsDeck.length === 0) return;
+  const widget = document.getElementById('mnemonic-widget');
+  widget.classList.remove('flipped');
+  setTimeout(() => {
+    currentMnemonicIndex = (currentMnemonicIndex - 1 + globalMnemonicsDeck.length) % globalMnemonicsDeck.length;
+    renderMnemonicCard();
+  }, 150);
+});
+
 function renderFlashcard() {
   if (globalFlashcardsDeck.length === 0) return;
   const card = globalFlashcardsDeck[currentCardIndex];
   document.getElementById('summary-front-text').innerHTML = card.front;
   document.getElementById('summary-back-text').innerHTML = card.back;
   document.getElementById('card-index-indicator').innerText = `${currentCardIndex + 1} / ${globalFlashcardsDeck.length}`;
+}
+
+function renderMnemonicCard() {
+  if (globalMnemonicsDeck.length === 0) return;
+  const card = globalMnemonicsDeck[currentMnemonicIndex];
+  document.getElementById('mnemonic-front-text').innerHTML = card.front;
+  document.getElementById('mnemonic-back-text').innerHTML = card.back;
+  document.getElementById('mnemonic-index-indicator').innerText = `${currentMnemonicIndex + 1} / ${globalMnemonicsDeck.length}`;
 }
 
 // Core Generation Pipeline
@@ -125,9 +163,13 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   document.getElementById('generate-btn').disabled = true;
 
   try {
-    const promptText = `You are a world-class high-yield medical and technical academic tutor. Analyze these notes and generate exactly 4 summary concept flashcards, one interactive word acronym mnemonic card object, and an active question assessment layout.
+    const promptText = `You are an expert high-yield technical academic tutor. Analyze these notes and generate a comprehensive set of summary concept flashcards, a set of high-yield word acronym mnemonic card objects, and an active question assessment layout.
     
-    Notes: ${notesText}
+    CRITICAL VOLUME INSTRUCTIONS:
+    - Do NOT limit yourself to a fixed number of flashcards or mnemonics.
+    - Dynamically scale the volume based on the note complexity. Short notes can have 2-4 cards. Extensive dense notes should scale up significantly (e.g., 6-12 flashcards, and 2-4 distinct mnemonics for different sub-topics) to guarantee zero high-yield context loss.
+    
+    Notes to analyze: ${notesText}
     
     You MUST respond ONLY with a raw JSON object matching this exact structure, do not include markdown blocks like \`\`\`json:
     {
@@ -137,8 +179,12 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
           "back": "<strong style='color:#1e40af;'>⚡ Key High-Yield Insights:</strong><br><br>• Strategic diagnostic standard or path mechanism detail 1<br>• High-yield laboratory identification criteria 2<br>• Important clinical rule or testing trap detail 3" 
         }
       ],
-      "mnemonic_front": "🧠 <strong style='font-size:1.1rem;'>Retention Acronym</strong><br><br>The high-yield word token key mnemonic is: <strong style='color:#b91c1c; font-size:1.2rem;'>KEYWORD</strong>",
-      "mnemonic_back": "<strong style='color:#92400e;'>💡 High-Yield Memory Breakdowns:</strong><br><br>• <strong>K</strong> - Functional concept point 1<br>• <strong>E</strong> - Functional concept point 2<br>• <strong>Y</strong> - Functional concept point 3",
+      "mnemonics": [
+        {
+          "front": "🧠 <strong style='font-size:1.1rem;'>Retention Acronym Title</strong><br><br>The high-yield word token key mnemonic is: <strong style='color:#b91c1c; font-size:1.2rem;'>KEYWORD</strong>",
+          "back": "<strong style='color:#92400e;'>💡 High-Yield Memory Breakdowns:</strong><br><br>• <strong>K</strong> - Functional concept point 1<br>• <strong>E</strong> - Functional concept point 2<br>• <strong>Y</strong> - Functional concept point 3"
+        }
+      ],
       "quiz": [
         {
           "question": "Standalone direct multiple choice question?",
@@ -164,14 +210,15 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     const data = JSON.parse(aiResponseText.trim());
 
-    // Render Summary Deck
+    // Process & Render Summary Deck dynamically
     globalFlashcardsDeck = Array.isArray(data.flashcards) ? data.flashcards : [];
     currentCardIndex = 0;
     renderFlashcard();
 
-    // Render Mnemonic Card Sides
-    document.getElementById('mnemonic-front-text').innerHTML = data.mnemonic_front || "Mnemonic Key Anchor";
-    document.getElementById('mnemonic-back-text').innerHTML = data.mnemonic_back || "Breakdown metrics details.";
+    // Process & Render Mnemonics Deck dynamically
+    globalMnemonicsDeck = Array.isArray(data.mnemonics) ? data.mnemonics : [];
+    currentMnemonicIndex = 0;
+    renderMnemonicCard();
 
     // Render Quiz Elements with Correct Highlight Mapping
     const quizContainer = document.getElementById('quiz-content');
