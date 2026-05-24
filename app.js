@@ -182,7 +182,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       "mnemonics": [
         {
           "front": "🧠 <strong style='font-size:1.1rem;'>Retention Acronym Title</strong><br><br>The high-yield key mnemonic keyword is: <strong style='color:#b91c1c; font-size:1.2rem;'>KEYWORD</strong>",
-          "back": "<strong style='color:#92400e; display:block; margin-bottom:12px;'>💡 Acronym Breakdown:</strong><strong style='font-size:1.1rem; line-height:1.8; display:block;'>K</strong> = Functional concept point 1<br><strong style='font-size:1.1rem; line-height:1.8; display:block;'>E</strong> = Functional concept point 2<br><strong style='font-size:1.1rem; line-height:1.8; display:block;'>Y</strong> = Functional concept point 3"
+          "back": "<strong style='color:#92400e; display:block; margin-bottom:12px;'>💡 Acronym Breakdown:</strong><strong>K</strong> = Real complete phrase starting with K here<br><strong>E</strong> = Real complete phrase starting with E here"
         }
       ],
       "quiz": [
@@ -195,10 +195,11 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       ]
     }
     
-    CRITICAL MNEMONIC FORMATTING RULES:
-    - In the "back" of the mnemonics object, do NOT use bullet points (•), hyphens (-), or leading periods.
-    - Format every single letter line EXACTLY like this layout model: <strong style='font-size:1.1rem; line-height:1.8; display:block;'>LETTER</strong> = Concise high-yield fact here
-    - Use a single <br> tag after each letter string line so it stacks perfectly, cleanly, and vertically down the card.
+    CRITICAL MNEMONIC RULES (AVOID CHOPPING):
+    - The acronym keyword MUST be a real, readable word or recognizable medical/technical abbreviation.
+    - NEVER chop a single word across lines (e.g., Never output a single letter followed by the rest of that word broken onto the line below like 'S <br> peaks'). The keyword letters must match the first letter of the phrase perfectly.
+    - Format every single phrase item cleanly on its own line exactly matching this model layout: <strong>LETTER</strong> = Complete context statement here
+    - Use a single <br> tag after each definition line string so it stacks perfectly, cleanly, and vertically down the card interface.
     
     CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements. Do not use filler phrases like 'According to the notes'.`;
 
