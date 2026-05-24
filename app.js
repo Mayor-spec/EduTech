@@ -163,11 +163,11 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   document.getElementById('generate-btn').disabled = true;
 
   try {
-    const promptText = `You are an expert high-yield technical academic tutor. Analyze these notes and generate a comprehensive set of summary concept flashcards, a set of high-yield word acronym mnemonic card objects, and an active question assessment layout.
+    const promptText = `You are an expert high-yield medical and technical academic tutor. Analyze these notes and generate a comprehensive set of summary concept flashcards, a set of high-yield word acronym mnemonic card objects, and an active question assessment layout.
     
     CRITICAL VOLUME INSTRUCTIONS:
     - Do NOT limit yourself to a fixed number of flashcards or mnemonics.
-    - Dynamically scale the volume based on the note complexity. Short notes can have 2-4 cards. Extensive dense notes should scale up significantly (e.g., 6-12 flashcards, and 2-4 distinct mnemonics for different sub-topics) to guarantee zero high-yield context loss.
+    - Dynamically scale the volume based on the note complexity. Short notes can have 2-4 cards. Extensive dense notes should scale up significantly to guarantee zero high-yield context loss.
     
     Notes to analyze: ${notesText}
     
@@ -181,8 +181,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       ],
       "mnemonics": [
         {
-          "front": "🧠 <strong style='font-size:1.1rem;'>Retention Acronym Title</strong><br><br>The high-yield word token key mnemonic is: <strong style='color:#b91c1c; font-size:1.2rem;'>KEYWORD</strong>",
-          "back": "<strong style='color:#92400e;'>💡 High-Yield Memory Breakdowns:</strong><br><br>• <strong>K</strong> - Functional concept point 1<br>• <strong>E</strong> - Functional concept point 2<br>• <strong>Y</strong> - Functional concept point 3"
+          "front": "🧠 <strong style='font-size:1.1rem;'>Retention Acronym Title</strong><br><br>The high-yield key mnemonic keyword is: <strong style='color:#b91c1c; font-size:1.2rem;'>KEYWORD</strong>",
+          "back": "<strong style='color:#92400e; display:block; margin-bottom:12px;'>💡 Acronym Breakdown:</strong><strong style='font-size:1.1rem; line-height:1.8; display:block;'>K</strong> = Functional concept point 1<br><strong style='font-size:1.1rem; line-height:1.8; display:block;'>E</strong> = Functional concept point 2<br><strong style='font-size:1.1rem; line-height:1.8; display:block;'>Y</strong> = Functional concept point 3"
         }
       ],
       "quiz": [
@@ -194,6 +194,12 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         }
       ]
     }
+    
+    CRITICAL MNEMONIC FORMATTING RULES:
+    - In the "back" of the mnemonics object, do NOT use bullet points (•), hyphens (-), or leading periods.
+    - Format every single letter line EXACTLY like this layout model: <strong style='font-size:1.1rem; line-height:1.8; display:block;'>LETTER</strong> = Concise high-yield fact here
+    - Use a single <br> tag after each letter string line so it stacks perfectly, cleanly, and vertically down the card.
+    
     CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements. Do not use filler phrases like 'According to the notes'.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
