@@ -7,7 +7,7 @@ This project was developed for the **GDGOC University of Ilorin Talent and Innov
 
 * **SDG Target:** **Goal 4: Quality Education** — Aiming to ensure inclusive and equitable quality education by providing students with accessible, intelligent, and optimized self-assessment tools.
 * **Core Google Technology Stack:** Google Gemini API & Firebase Firestore.
-* **Developed By:** MOSED BABATUNDE
+* **Developed By:** MOSES BABATUNDE
 
 ---
 
