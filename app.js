@@ -21,7 +21,7 @@ const db = getFirestore(app);
 // 2. DIRECT GEMINI CONNECTION (Scraper-Proof Format)
 // ==========================================================================
 const part1 = "AIzaSy";
-const part2 = "PASTE_THE_REST_OF_YOUR_NEW_KEY_HERE"; 
+const part2 = "AT5BylokndKf5fs47mEoxPvkibG8w3kV4"; 
 
 const GEMINI_API_KEY = part1 + part2;
 
