@@ -21,7 +21,7 @@ const db = getFirestore(app);
 // 2. DIRECT GEMINI CONNECTION (Scraper-Proof Format)
 // ==========================================================================
 const part1 = "AIzaSy";
-const part2 = "AT5BylokndKf5fs47mEoxPvkibG8w3kV4"; 
+const part2 = "PASTE_THE_REST_OF_YOUR_NEW_KEY_HERE"; 
 
 const GEMINI_API_KEY = part1 + part2;
 
@@ -33,6 +33,11 @@ let currentCardIndex = 0;
 
 let globalMnemonicsDeck = [];
 let currentMnemonicIndex = 0;
+
+// Scoring and global progression states
+let totalQuestionsCount = 0;
+let correctAnswersCount = 0;
+let answeredQuestionsCount = 0;
 
 // Setup Individual Widget 3D Flip Listeners
 document.getElementById('summary-widget')?.addEventListener('click', () => {
@@ -160,15 +165,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
   const questionCount = document.getElementById('quiz-count').value;
   
-  // Interactive loading state transitions
   document.getElementById('generate-btn').innerText = "Analyzing Study Elements...";
   document.getElementById('generate-btn').disabled = true;
-
-  setTimeout(() => {
-    if (document.getElementById('generate-btn').disabled) {
-      document.getElementById('generate-btn').innerText = "Building Interactive Cards & Assessment...";
-    }
-  }, 3000);
 
   try {
     const promptText = `You are an expert high-yield medical and technical academic tutor. Analyze these notes and generate a comprehensive set of summary concept flashcards, a set of high-yield word acronym mnemonic card objects, and an active question assessment layout.
@@ -205,20 +203,19 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     
     CRITICAL MNEMONIC RULES (AVOID CHOPPING):
     - The acronym keyword MUST be a real, readable word or recognizable medical/technical abbreviation.
-    - NEVER chop a single word across lines (e.g., Never output a single letter followed by the rest of that word broken onto the line below like 'S <br> peaks'). The keyword letters must match the first letter of the phrase perfectly.
+    - NEVER chop a single word across lines. The keyword letters must match the first letter of the phrase perfectly.
     - Format every single phrase item cleanly on its own line exactly matching this model layout: <strong>LETTER</strong> = Complete context statement here
     - Use a single <br> tag after each definition line string so it stacks perfectly, cleanly, and vertically down the card interface.
     
     CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements. Do not use filler phrases like 'According to the notes'.`;
 
-    // Production Endpoint Router utilizing the fully verified gemini-2.5-flash engine configuration
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
-          temperature: 0.15, // Low temperature minimizes thinking latency and keeps JSON output exact
+          temperature: 0.15,
           responseMimeType: "application/json"
         }
       })
@@ -242,84 +239,161 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     currentMnemonicIndex = 0;
     renderMnemonicCard();
 
-    // Render Quiz Elements with Correct Highlight Mapping
+    // Reset scoring arrays for fresh sprint calculation
+    totalQuestionsCount = 0;
+    correctAnswersCount = 0;
+    answeredQuestionsCount = 0;
+
     const quizContainer = document.getElementById('quiz-content');
     quizContainer.innerHTML = ''; 
+    
     const quizData = Array.isArray(data.quiz) ? data.quiz : [];
-    let totalQuestions = quizData.length;
-    let correctAnswersCount = 0;
-    let answeredQuestionsCount = 0;
-
-    quizData.forEach((q, qIndex) => {
-      const qElement = document.createElement('div');
-      qElement.className = 'quiz-question';
-      qElement.innerHTML = `<p><strong>Q${qIndex + 1}: ${q.question}</strong></p>`;
-      const optionsContainer = document.createElement('div');
-      optionsContainer.className = 'options-container';
-
-      q.options.forEach(option => {
-        const btn = document.createElement('button');
-        btn.innerText = option;
-        btn.className = 'option-btn';
-        
-        btn.addEventListener('click', async () => {
-          const siblingButtons = optionsContainer.querySelectorAll('.option-btn');
-          siblingButtons.forEach(b => b.disabled = true);
-          answeredQuestionsCount++;
-
-          if (option === q.correctAnswer) {
-            btn.style.backgroundColor = 'var(--accent-success)';
-            btn.style.color = '#fff';
-            btn.style.borderColor = 'var(--accent-success)';
-            correctAnswersCount++;
-          } else {
-            btn.style.backgroundColor = 'var(--accent-error)';
-            btn.style.color = '#fff';
-            btn.style.borderColor = 'var(--accent-error)';
-            
-            siblingButtons.forEach(b => {
-              if (b.innerText === q.correctAnswer) {
-                b.style.border = '2px dashed var(--accent-success)';
-                b.style.color = 'var(--accent-success)';
-                b.style.backgroundColor = '#f0fdf4';
-              }
-            });
-          }
-
-          const exp = document.createElement('p');
-          exp.className = 'quiz-explanation';
-          exp.innerHTML = `<small>💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
-          qElement.appendChild(exp);
-
-          if (answeredQuestionsCount === totalQuestions) {
-            renderFinalScore(quizContainer, correctAnswersCount, totalQuestions);
-          }
-        });
-        optionsContainer.appendChild(btn);
-      });
-      qElement.appendChild(optionsContainer);
-      quizContainer.appendChild(qElement);
-    });
+    appendQuestionsToQuiz(quizData);
 
     document.getElementById('input-section').classList.add('hidden');
     document.getElementById('workspace-section').classList.remove('hidden');
 
   } catch (error) {
-    console.error("Detailed Error Logs:", error);
-    alert("⚠️ App Execution Interrupted:\n" + error.message + "\n\nTry clicking again or verify your API key remainder config.");
+    alert("⚠️ App Execution Interrupted:\n" + error.message);
   } finally {
     document.getElementById('generate-btn').innerText = "Generate Study Sprint";
     document.getElementById('generate-btn').disabled = false;
   }
 });
 
+// Reusable function to build and append quiz cards dynamically
+function appendQuestionsToQuiz(questionsArray) {
+  const quizContainer = document.getElementById('quiz-content');
+  
+  questionsArray.forEach((q) => {
+    totalQuestionsCount++;
+    const activeIndex = totalQuestionsCount;
+
+    const qElement = document.createElement('div');
+    qElement.className = 'quiz-question';
+    qElement.innerHTML = `<p><strong>Q${activeIndex}: ${q.question}</strong></p>`;
+    
+    const optionsContainer = document.createElement('div');
+    optionsContainer.className = 'options-container';
+
+    q.options.forEach(option => {
+      const btn = document.createElement('button');
+      btn.innerText = option;
+      btn.className = 'option-btn';
+      
+      btn.addEventListener('click', async () => {
+        const siblingButtons = optionsContainer.querySelectorAll('.option-btn');
+        siblingButtons.forEach(b => b.disabled = true);
+        answeredQuestionsCount++;
+
+        if (option === q.correctAnswer) {
+          btn.style.backgroundColor = 'var(--accent-success)';
+          btn.style.color = '#fff';
+          btn.style.borderColor = 'var(--accent-success)';
+          correctAnswersCount++;
+        } else {
+          btn.style.backgroundColor = 'var(--accent-error)';
+          btn.style.color = '#fff';
+          btn.style.borderColor = 'var(--accent-error)';
+          
+          siblingButtons.forEach(b => {
+            if (b.innerText === q.correctAnswer) {
+              b.style.border = '2px dashed var(--accent-success)';
+              b.style.color = 'var(--accent-success)';
+              b.style.backgroundColor = '#f0fdf4';
+            }
+          });
+        }
+
+        const exp = document.createElement('p');
+        exp.className = 'quiz-explanation';
+        exp.innerHTML = `<small>💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
+        qElement.appendChild(exp);
+
+        if (answeredQuestionsCount === totalQuestionsCount) {
+          renderFinalScore(quizContainer, correctAnswersCount, totalQuestionsCount);
+        }
+      });
+      optionsContainer.appendChild(btn);
+    });
+    
+    qElement.appendChild(optionsContainer);
+    quizContainer.appendChild(qElement);
+  });
+}
+
+// ⚡ EXTRA LOAD ROUTINE: Dynamic Question Generator Button Listener
+document.getElementById('add-more-questions-btn').addEventListener('click', async () => {
+  const notesText = document.getElementById('notes-input').value;
+  const addBtn = document.getElementById('add-more-questions-btn');
+  
+  addBtn.innerText = "⏳ Fetching 3 New Questions...";
+  addBtn.disabled = true;
+
+  // Clear any existing final score card banner if present to let the test flow continue
+  const ongoingScoreCard = document.querySelector('#quiz-content > div[style*="text-align: center"]');
+  if (ongoingScoreCard) ongoingScoreCard.remove();
+
+  try {
+    const dynamicPrompt = `You are a high-yield technical assessment engine. Review these notes and generate exactly 3 fresh, unique multiple-choice questions that are DIFFERENT from basic standard definitions.
+    
+    Notes: ${notesText}
+    
+    You MUST respond ONLY with a raw JSON object matching this exact structure:
+    {
+      "quiz": [
+        {
+          "question": "Sharp standalone analytical question?",
+          "options": ["A", "B", "C", "D"],
+          "correctAnswer": "Exact match option text string",
+          "explanation": "High-yield context rule justification statement."
+        }
+      ]
+    }`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        contents: [{ parts: [{ text: dynamicPrompt }] }],
+        generationConfig: { temperature: 0.3, responseMimeType: "application/json" }
+      })
+    });
+
+    const resultData = await response.json();
+    if (!response.ok) throw new Error("Could not populate addition questions layer.");
+
+    let aiResponseText = resultData.candidates[0].content.parts[0].text;
+    if (aiResponseText.includes("```")) aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
+    
+    const data = JSON.parse(aiResponseText.trim());
+    const expansionQuizData = Array.isArray(data.quiz) ? data.quiz : [];
+    
+    appendQuestionsToQuiz(expansionQuizData);
+    alert("🎉 Added 3 brand new high-yield questions to the bottom of your track!");
+
+  } catch (error) {
+    alert("⚠️ Could not load more questions: " + error.message);
+  } finally {
+    addBtn.innerText = "➕ Add More Questions";
+    addBtn.disabled = false;
+  }
+});
+
 function renderFinalScore(container, score, total) {
+  // Remove any previously appended summary score cards to avoid duplicates
+  const existingScore = container.querySelector('.final-score-banner');
+  if (existingScore) existingScore.remove();
+
   const scoreCard = document.createElement('div');
+  scoreCard.className = 'final-score-banner';
   scoreCard.style.marginTop = '24px';
   scoreCard.style.padding = '20px';
   scoreCard.style.backgroundColor = '#eef2ff';
   scoreCard.style.borderRadius = '12px';
   scoreCard.style.textAlign = 'center';
+  scoreCard.style.border = '1px solid var(--border-color)';
+  
   const percentage = Math.round((score / total) * 100);
   scoreCard.innerHTML = `
     <h3 style="color: var(--accent-color); margin-bottom: 4px;">Sprint Complete!</h3>
