@@ -164,9 +164,26 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   if (!notesText) return alert("Please input or upload study assets first!");
 
   const questionCount = document.getElementById('quiz-count').value;
+  const generateBtn = document.getElementById('generate-btn');
   
-  document.getElementById('generate-btn').innerText = "Analyzing Study Elements...";
-  document.getElementById('generate-btn').disabled = true;
+  // ⏳ Advanced Multi-State Interactive Loading Loop
+  generateBtn.disabled = true;
+  generateBtn.innerText = "🔍 Analyzing notes...";
+
+  let loadState = 0;
+  const loadingMessages = [
+    "⚡ Generating summary flashcards...",
+    "🧠 Forging memory mnemonics...",
+    "📝 Assembling quiz questions...",
+    "🎨 Polishing your sprint dashboard..."
+  ];
+
+  const loadingInterval = setInterval(() => {
+    if (generateBtn.disabled && loadState < loadingMessages.length) {
+      generateBtn.innerText = loadingMessages[loadState];
+      loadState++;
+    }
+  }, 2200);
 
   try {
     const promptText = `You are an expert high-yield medical and technical academic tutor. Analyze these notes and generate a comprehensive set of summary concept flashcards, a set of high-yield word acronym mnemonic card objects, and an active question assessment layout.
@@ -239,7 +256,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     currentMnemonicIndex = 0;
     renderMnemonicCard();
 
-    // Reset scoring arrays for fresh sprint calculation
+    // Reset scoring arrays for fresh calculation
     totalQuestionsCount = 0;
     correctAnswersCount = 0;
     answeredQuestionsCount = 0;
@@ -256,8 +273,9 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   } catch (error) {
     alert("⚠️ App Execution Interrupted:\n" + error.message);
   } finally {
-    document.getElementById('generate-btn').innerText = "Generate Study Sprint";
-    document.getElementById('generate-btn').disabled = false;
+    clearInterval(loadingInterval); // Stop the timer when loading finishes
+    generateBtn.innerText = "Generate Study Sprint";
+    generateBtn.disabled = false;
   }
 });
 
@@ -322,7 +340,7 @@ function appendQuestionsToQuiz(questionsArray) {
   });
 }
 
-// ⚡ EXTRA LOAD ROUTINE: Dynamic Question Generator Button Listener
+// Dynamic Question Generator Button Listener
 document.getElementById('add-more-questions-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
   const addBtn = document.getElementById('add-more-questions-btn');
@@ -330,7 +348,6 @@ document.getElementById('add-more-questions-btn').addEventListener('click', asyn
   addBtn.innerText = "⏳ Fetching 3 New Questions...";
   addBtn.disabled = true;
 
-  // Clear any existing final score card banner if present to let the test flow continue
   const ongoingScoreCard = document.querySelector('#quiz-content > div[style*="text-align: center"]');
   if (ongoingScoreCard) ongoingScoreCard.remove();
 
@@ -361,7 +378,7 @@ document.getElementById('add-more-questions-btn').addEventListener('click', asyn
     });
 
     const resultData = await response.json();
-    if (!response.ok) throw new Error("Could not populate addition questions layer.");
+    if (!response.ok) throw new Error("Could not populate additional questions layer.");
 
     let aiResponseText = resultData.candidates[0].content.parts[0].text;
     if (aiResponseText.includes("```")) aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
@@ -381,7 +398,6 @@ document.getElementById('add-more-questions-btn').addEventListener('click', asyn
 });
 
 function renderFinalScore(container, score, total) {
-  // Remove any previously appended summary score cards to avoid duplicates
   const existingScore = container.querySelector('.final-score-banner');
   if (existingScore) existingScore.remove();
 
