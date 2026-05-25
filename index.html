@@ -144,6 +144,32 @@
       box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     }
 
+    .secondary-btn {
+      width: 100%;
+      background: #ffffff;
+      color: var(--accent-color);
+      border: 2px solid var(--accent-color);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .secondary-btn:hover:not(:disabled) {
+      background: #f5f3ff;
+      color: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .secondary-btn:disabled {
+      border-color: #cbd5e1;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -207,7 +233,6 @@
       overflow-y: auto;
     }
 
-    /* Core Summary Dynamic Palettes */
     .summary-front {
       background: #f0fdf4;
       border: 2px solid #bbf7d0;
@@ -223,7 +248,6 @@
       text-align: left;
     }
 
-    /* Mnemonic Dynamic Palettes */
     .mnemonic-front {
       background: #fff5f5;
       border: 2px solid #fed7d7;
@@ -375,7 +399,11 @@
 
         <div class="bento-card" style="border-top: 4px solid #10b981;">
           <div class="card-title" style="color: #10b981;">📝 Active Sprint Assessment</div>
-          <div id="quiz-content" class="content-box">Processing elements...</div>
+          <div id="quiz-holder">
+            <div id="quiz-content" class="content-box">Processing elements...</div>
+          </div>
+          
+          <button id="add-more-questions-btn" class="secondary-btn">➕ Add More Questions</button>
         </div>
 
       </div>
