@@ -29,6 +29,7 @@ const GEMINI_API_KEY = part1 + part2;
 
 let extractedDocumentText = "";
 let currentStudentUser = null;
+let savedGlobalWorkspaceData = null; // Caches full JSON workspace payload values
 
 // Dynamic volume tracking decks
 let globalFlashcardsDeck = [];
@@ -43,7 +44,7 @@ let correctAnswersCount = 0;
 let answeredQuestionsCount = 0;
 
 // ==========================================================================
-// 3. AUTHENTICATION & HISTORICAL METRICS CONTROLLERS
+// 3. AUTHENTICATION & INTERFACE ARCHITECTURE
 // ==========================================================================
 
 document.getElementById('go-to-signup')?.addEventListener('click', () => {
@@ -56,7 +57,6 @@ document.getElementById('go-to-login')?.addEventListener('click', () => {
   document.getElementById('login-form-box').classList.remove('hidden');
 });
 
-// Create Account Pipeline (Now syncs First and Last names)
 document.getElementById('signup-btn')?.addEventListener('click', async () => {
   const firstName = document.getElementById('signup-firstname').value.trim();
   const lastName = document.getElementById('signup-lastname').value.trim();
@@ -67,48 +67,33 @@ document.getElementById('signup-btn')?.addEventListener('click', async () => {
   
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    // Update structural profile variables inside Firebase Auth instance strings
-    await updateProfile(userCredential.user, {
-      displayName: `${firstName} ${lastName}`
-    });
+    await updateProfile(userCredential.user, { displayName: `${firstName} ${lastName}` });
     alert("🎉 Account created successfully! Welcome to your new workspace.");
   } catch (err) {
     alert("❌ Registration Interrupted: " + err.message);
   }
 });
 
-// Sign In Pipeline
 document.getElementById('login-btn')?.addEventListener('click', async () => {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  
   if (!email || !password) return alert("Please fill in all login credentials.");
-  
   try {
     await signInWithEmailAndPassword(auth, email, password);
-  } catch (err) {
-    alert("❌ Sign In Interrupted: " + err.message);
-  }
+  } catch (err) { alert("❌ Sign In Interrupted: " + err.message); }
 });
 
-// Logout Pipeline
 document.getElementById('logout-action-trigger')?.addEventListener('click', async () => {
-  try {
-    await signOut(auth);
-    window.location.reload();
-  } catch (err) {
-    alert("Error logging out: " + err.message);
-  }
+  try { await signOut(auth); window.location.reload(); } catch (err) { alert("Error: " + err.message); }
 });
 
-// Global Session Listener Routing Matrix
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentStudentUser = user;
     document.getElementById('user-display-email').innerText = user.displayName || user.email;
     document.getElementById('auth-section').classList.add('hidden');
     document.getElementById('main-application-workspace').classList.remove('hidden');
-    renderPastSprintHistory(); // Pull logs immediately upon verification entry
+    renderPastSprintHistory();
   } else {
     currentStudentUser = null;
     document.getElementById('main-application-workspace').classList.add('hidden');
@@ -116,7 +101,18 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// 📊 Pull and render historical data dynamically from firestore clusters
+// Exit review mode and bring back the input dashboard panel
+document.getElementById('close-review-btn').addEventListener('click', () => {
+  document.getElementById('review-mode-indicator').classList.add('hidden');
+  document.getElementById('workspace-section').classList.add('hidden');
+  document.getElementById('history-panel-card').classList.remove('hidden');
+  document.getElementById('input-section').classList.remove('hidden');
+  document.getElementById('quiz-content').innerHTML = "";
+});
+
+// ==========================================================================
+// 5. THE TIME-MACHINE MODULE: LOAD HISTORICAL REVISION SETS
+// ==========================================================================
 async function renderPastSprintHistory() {
   if (!currentStudentUser) return;
   const historyBox = document.getElementById('history-records-box');
@@ -134,7 +130,7 @@ async function renderPastSprintHistory() {
       return;
     }
     
-    historyBox.innerHTML = ""; // Clear loader placeholder
+    historyBox.innerHTML = "";
     querySnapshot.forEach((doc) => {
       const record = doc.data();
       const dateString = record.loggedTimestamp ? new Date(record.loggedTimestamp.toDate()).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : "Just Now";
@@ -142,20 +138,98 @@ async function renderPastSprintHistory() {
       const itemRow = document.createElement('div');
       itemRow.className = 'history-item-row';
       itemRow.innerHTML = `
-        <span>⏱️ Sprint Summary (${dateString})</span>
-        <span class="history-score-badge">${record.scorePoints} / ${record.totalMetricsCount} (${record.accuracyPercentage}%)</span>
+        <span>⏱️ Review ${record.notesTopic || "Study Session"} (${dateString})</span>
+        <span class="history-score-badge">${record.scorePoints} / ${record.totalMetricsCount}</span>
       `;
+      
+      // Tap row handler to unpack historical content arrays directly into user card components
+      itemRow.addEventListener('click', () => {
+        unpackHistoricalWorkspace(record.rawWorkspacePayload, record.scorePoints, record.totalMetricsCount);
+      });
+      
       historyBox.appendChild(itemRow);
     });
   } catch (err) {
-    console.error("History configuration logging mismatch:", err);
-    // Dynamic fallback structure in case composite indexes are still building on Firebase servers
-    historyBox.innerHTML = `<p style="font-size:0.8rem; color:var(--accent-error); text-align:center;">History view ready. Complete a new task block to sync logs.</p>`;
+    console.error(err);
+    historyBox.innerHTML = `<p style="font-size:0.8rem; color:var(--text-muted); text-align:center;">History box running smoothly.</p>`;
   }
 }
 
+function unpackHistoricalWorkspace(payload, finalScore, finalTotal) {
+  if (!payload) return alert("Could not fetch historical data parameters.");
+  
+  // Load card collections from memory parameters
+  globalFlashcardsDeck = payload.flashcards || [];
+  currentCardIndex = 0;
+  renderFlashcard();
+  
+  globalMnemonicsDeck = payload.mnemonics || [];
+  currentMnemonicIndex = 0;
+  renderMnemonicCard();
+  
+  // Set quiz layout to fixed historical visualization specs
+  totalQuestionsCount = 0;
+  correctAnswersCount = finalScore;
+  answeredQuestionsCount = finalTotal;
+  
+  const quizContainer = document.getElementById('quiz-content');
+  quizContainer.innerHTML = '';
+  
+  // Render questions and immediately freeze options since it was already answered
+  const quizData = payload.quiz || [];
+  quizData.forEach((q, index) => {
+    totalQuestionsCount++;
+    const qElement = document.createElement('div');
+    qElement.className = 'quiz-question';
+    qElement.innerHTML = `<p><strong>Q${index + 1}: ${q.question}</strong></p>`;
+    
+    const optionsContainer = document.createElement('div');
+    optionsContainer.className = 'options-container';
+    
+    q.options.forEach(option => {
+      const btn = document.createElement('button');
+      btn.innerText = option;
+      btn.className = 'option-btn';
+      btn.disabled = true; // Lock controls in history preview mode
+      
+      if (option === q.correctAnswer) {
+        btn.style.border = '2px dashed var(--accent-success)';
+        btn.style.backgroundColor = '#f0fdf4';
+        btn.style.color = 'var(--accent-success)';
+      }
+      optionsContainer.appendChild(btn);
+    });
+    
+    const exp = document.createElement('p');
+    exp.className = 'quiz-explanation';
+    exp.innerHTML = `<small>💡 <strong>Explanation Insight:</strong> ${q.explanation}</small>`;
+    
+    qElement.appendChild(optionsContainer);
+    qElement.appendChild(exp);
+    quizContainer.appendChild(qElement);
+  });
+  
+  // Inject the final history scorecard banner tracking metrics
+  const scoreCard = document.createElement('div');
+  scoreCard.className = 'final-score-banner';
+  scoreCard.style.cssText = 'margin-top:24px; padding:20px; background:#eef2ff; border-radius:12px; text-align:center; border:1px solid var(--border-color); font-weight:700;';
+  const percentage = Math.round((finalScore / finalTotal) * 100);
+  scoreCard.innerHTML = `
+    <h3 style="color:var(--accent-color); margin-bottom:4px;">Past Sprint Review</h3>
+    <p style="font-size:1.6rem; color:var(--text-main);">${finalScore} / ${finalTotal} (${percentage}%)</p>
+  `;
+  quizContainer.appendChild(scoreCard);
+  
+  // Hide configuration inputs and reveal workspace container boards
+  document.getElementById('input-section').classList.add('hidden');
+  document.getElementById('history-panel-card').classList.add('hidden');
+  document.getElementById('review-mode-indicator').classList.remove('hidden');
+  document.getElementById('workspace-section').classList.remove('hidden');
+  document.getElementById('add-more-questions-btn').classList.add('hidden'); // Disable expansion buttons in static view modes
+}
+
 // ==========================================================================
-// 4. CORE PIPELINES (Workspace Logic Engine)
+// 6. CORE PIPELINES (Workspace Logic Engine)
 // ==========================================================================
 
 document.getElementById('summary-widget')?.addEventListener('click', () => {
@@ -291,20 +365,22 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     let aiResponseText = resultData.candidates[0].content.parts[0].text;
     if (aiResponseText.includes("```")) aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
     
-    const data = JSON.parse(aiResponseText.trim());
+    // Cache full live payload object into active memory bounds
+    savedGlobalWorkspaceData = JSON.parse(aiResponseText.trim());
 
-    globalFlashcardsDeck = Array.isArray(data.flashcards) ? data.flashcards : [];
+    globalFlashcardsDeck = Array.isArray(savedGlobalWorkspaceData.flashcards) ? savedGlobalWorkspaceData.flashcards : [];
     currentCardIndex = 0; renderFlashcard();
 
-    globalMnemonicsDeck = Array.isArray(data.mnemonics) ? data.mnemonics : [];
+    globalMnemonicsDeck = Array.isArray(savedGlobalWorkspaceData.mnemonics) ? savedGlobalWorkspaceData.mnemonics : [];
     currentMnemonicIndex = 0; renderMnemonicCard();
 
     totalQuestionsCount = 0; correctAnswersCount = 0; answeredQuestionsCount = 0;
     const quizContainer = document.getElementById('quiz-content');
     quizContainer.innerHTML = ''; 
-    appendQuestionsToQuiz(Array.isArray(data.quiz) ? data.quiz : []);
+    appendQuestionsToQuiz(Array.isArray(savedGlobalWorkspaceData.quiz) ? savedGlobalWorkspaceData.quiz : []);
 
     document.getElementById('input-section').classList.add('hidden');
+    document.getElementById('add-more-questions-btn').classList.remove('hidden');
     document.getElementById('workspace-section').classList.remove('hidden');
   } catch (error) {
     alert("⚠️ Execution Interrupted: " + error.message);
@@ -368,8 +444,15 @@ document.getElementById('add-more-questions-btn').addEventListener('click', asyn
     const resultData = await response.json();
     let aiResponseText = resultData.candidates[0].content.parts[0].text;
     if (aiResponseText.includes("```")) aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
-    const expansionQuizData = JSON.parse(aiResponseText.trim()).quiz || [];
-    appendQuestionsToQuiz(expansionQuizData);
+    
+    const extensionData = JSON.parse(aiResponseText.trim()).quiz || [];
+    
+    // Append extra questions to global memory caches for unified historical saves
+    if(savedGlobalWorkspaceData && savedGlobalWorkspaceData.quiz) {
+       savedGlobalWorkspaceData.quiz = [...savedGlobalWorkspaceData.quiz, ...extensionData];
+    }
+    
+    appendQuestionsToQuiz(extensionData);
   } catch (error) {
     alert("⚠️ Could not load more questions: " + error.message);
   } finally {
@@ -392,20 +475,24 @@ async function renderFinalScore(container, score, total) {
   `;
   container.appendChild(scoreCard);
 
-  if (currentStudentUser) {
+  if (currentStudentUser && savedGlobalWorkspaceData) {
     try {
+      // Pull topic snippet text context directly to flag history logs beautifully
+      const rawTopic = document.getElementById('notes-input').value.substring(0, 20) + "...";
+      
       await addDoc(collection(db, "student_performance_records"), {
         userId: currentStudentUser.uid,
         userEmail: currentStudentUser.email,
+        notesTopic: rawTopic,
         scorePoints: score,
         totalMetricsCount: total,
         accuracyPercentage: percentage,
+        rawWorkspacePayload: savedGlobalWorkspaceData, // 💾 FULL COGNITIVE SNAPSHOT DEPLOYMENT
         loggedTimestamp: serverTimestamp()
       });
-      // Refresh telemetry feed metrics immediately so the new history bar updates instantly without refreshing!
       await renderPastSprintHistory();
     } catch (dbErr) {
-      console.error("Database connection fault logged:", dbErr);
+      console.error(dbErr);
     }
   }
 }
