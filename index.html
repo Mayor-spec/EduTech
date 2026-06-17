@@ -86,7 +86,13 @@
       margin-bottom: 20px;
     }
 
-    input[type="file"], select, input[type="email"], input[type="password"] {
+    .name-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    input[type="file"], select, input[type="email"], input[type="password"], input[type="text"] {
       display: block;
       width: 100%;
       padding: 14px;
@@ -173,9 +179,9 @@
     }
 
     .bento-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
     .bento-card {
@@ -192,6 +198,35 @@
       color: var(--accent-color);
       margin-bottom: 16px;
       font-weight: 700;
+    }
+
+    /* 📊 SCROLLABLE PERFORMANCE HISTORY ARCHITECTURE */
+    .history-feed-container {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+
+    .history-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 0.88rem;
+    }
+
+    .history-score-badge {
+      font-weight: 700;
+      color: #ffffff;
+      background: var(--accent-color);
+      padding: 4px 10px;
+      border-radius: 6px;
     }
 
     .flashcard-wrapper {
@@ -264,6 +299,17 @@
       </div>
 
       <div id="signup-form-box" class="hidden">
+        <div class="name-row">
+          <div>
+            <label for="signup-firstname">First Name:</label>
+            <input type="text" id="signup-firstname" placeholder="Mayowa">
+          </div>
+          <div>
+            <label for="signup-lastname">Last Name:</label>
+            <input type="text" id="signup-lastname" placeholder="Babatunde">
+          </div>
+        </div>
+
         <label for="signup-email">Email Address:</label>
         <input type="email" id="signup-email" placeholder="student@unilorin.edu.ng">
         
@@ -278,8 +324,15 @@
     <div id="main-application-workspace" class="hidden">
       
       <div class="user-profile-header">
-        <span>👤 Account: <span id="user-display-email" style="color: var(--accent-color);">student@email.com</span></span>
+        <span>👤 Student: <span id="user-display-email" style="color: var(--accent-color); font-weight:700;">Loading Name...</span></span>
         <span class="logout-link" id="logout-action-trigger">Log Out</span>
+      </div>
+
+      <div class="bento-card" style="margin-bottom: 24px; border-left: 4px solid var(--accent-color);">
+        <div class="card-title" style="margin-bottom: 12px;">📊 Your Historical Sprint Record</div>
+        <div class="history-feed-container" id="history-records-box">
+          <p style="font-size: 0.88rem; color: var(--text-muted); text-align: center; padding: 10px;">No sprints recorded yet. Complete your first assessment to view telemetry records!</p>
+        </div>
       </div>
 
       <div id="input-section">
