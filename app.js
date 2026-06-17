@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // ==========================================================================
 // 1. FIREBASE CONFIGURATION
@@ -17,7 +17,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app); // Active Session State Tracking Interface
+const auth = getAuth(app);
 
 // ==========================================================================
 // 2. DIRECT GEMINI CONNECTION (Scraper-Proof Format)
@@ -28,7 +28,7 @@ const part2 = "AT5BylokndKf5fs47mEoxPvkibG8w3kV4";
 const GEMINI_API_KEY = part1 + part2;
 
 let extractedDocumentText = "";
-let currentStudentUser = null; // Global reference pointer for historical analytics logging
+let currentStudentUser = null;
 
 // Dynamic volume tracking decks
 let globalFlashcardsDeck = [];
@@ -43,10 +43,9 @@ let correctAnswersCount = 0;
 let answeredQuestionsCount = 0;
 
 // ==========================================================================
-// 3. AUTHENTICATION CONTROLLERS & INTERFACE ROUTING
+// 3. AUTHENTICATION & HISTORICAL METRICS CONTROLLERS
 // ==========================================================================
 
-// Switch UI screens between Login Box and Signup Box
 document.getElementById('go-to-signup')?.addEventListener('click', () => {
   document.getElementById('login-form-box').classList.add('hidden');
   document.getElementById('signup-form-box').classList.remove('hidden');
@@ -57,15 +56,21 @@ document.getElementById('go-to-login')?.addEventListener('click', () => {
   document.getElementById('login-form-box').classList.remove('hidden');
 });
 
-// Create Account Pipeline
+// Create Account Pipeline (Now syncs First and Last names)
 document.getElementById('signup-btn')?.addEventListener('click', async () => {
+  const firstName = document.getElementById('signup-firstname').value.trim();
+  const lastName = document.getElementById('signup-lastname').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   
-  if (!email || !password) return alert("Please fill in all creation parameters.");
+  if (!firstName || !lastName || !email || !password) return alert("Please fill in all creation parameters.");
   
   try {
-    await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // Update structural profile variables inside Firebase Auth instance strings
+    await updateProfile(userCredential.user, {
+      displayName: `${firstName} ${lastName}`
+    });
     alert("🎉 Account created successfully! Welcome to your new workspace.");
   } catch (err) {
     alert("❌ Registration Interrupted: " + err.message);
@@ -90,25 +95,64 @@ document.getElementById('login-btn')?.addEventListener('click', async () => {
 document.getElementById('logout-action-trigger')?.addEventListener('click', async () => {
   try {
     await signOut(auth);
-    window.location.reload(); // Hard reset application bounds to secure memory states
+    window.location.reload();
   } catch (err) {
     alert("Error logging out: " + err.message);
   }
 });
 
-// Global Observer watching for session adjustments across the client thread
+// Global Session Listener Routing Matrix
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentStudentUser = user;
-    document.getElementById('user-display-email').innerText = user.email;
+    document.getElementById('user-display-email').innerText = user.displayName || user.email;
     document.getElementById('auth-section').classList.add('hidden');
     document.getElementById('main-application-workspace').classList.remove('hidden');
+    renderPastSprintHistory(); // Pull logs immediately upon verification entry
   } else {
     currentStudentUser = null;
     document.getElementById('main-application-workspace').classList.add('hidden');
     document.getElementById('auth-section').classList.remove('hidden');
   }
 });
+
+// 📊 Pull and render historical data dynamically from firestore clusters
+async function renderPastSprintHistory() {
+  if (!currentStudentUser) return;
+  const historyBox = document.getElementById('history-records-box');
+  
+  try {
+    const historyQuery = query(
+      collection(db, "student_performance_records"),
+      where("userId", "==", currentStudentUser.uid),
+      orderBy("loggedTimestamp", "desc")
+    );
+    
+    const querySnapshot = await getDocs(historyQuery);
+    if (querySnapshot.empty) {
+      historyBox.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:10px;">No historical sprints logged yet. Complete an active sprint test below!</p>`;
+      return;
+    }
+    
+    historyBox.innerHTML = ""; // Clear loader placeholder
+    querySnapshot.forEach((doc) => {
+      const record = doc.data();
+      const dateString = record.loggedTimestamp ? new Date(record.loggedTimestamp.toDate()).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : "Just Now";
+      
+      const itemRow = document.createElement('div');
+      itemRow.className = 'history-item-row';
+      itemRow.innerHTML = `
+        <span>⏱️ Sprint Summary (${dateString})</span>
+        <span class="history-score-badge">${record.scorePoints} / ${record.totalMetricsCount} (${record.accuracyPercentage}%)</span>
+      `;
+      historyBox.appendChild(itemRow);
+    });
+  } catch (err) {
+    console.error("History configuration logging mismatch:", err);
+    // Dynamic fallback structure in case composite indexes are still building on Firebase servers
+    historyBox.innerHTML = `<p style="font-size:0.8rem; color:var(--accent-error); text-align:center;">History view ready. Complete a new task block to sync logs.</p>`;
+  }
+}
 
 // ==========================================================================
 // 4. CORE PIPELINES (Workspace Logic Engine)
@@ -298,7 +342,7 @@ function appendQuestionsToQuiz(questionsArray) {
         qElement.appendChild(exp);
 
         if (answeredQuestionsCount === totalQuestionsCount) {
-          renderFinalScore(quizContainer, correctAnswersCount, totalQuestionsCount);
+          await renderFinalScore(quizContainer, correctAnswersCount, totalQuestionsCount);
         }
       });
       optionsContainer.appendChild(btn);
@@ -307,7 +351,6 @@ function appendQuestionsToQuiz(questionsArray) {
   });
 }
 
-// ⚡ EXTRA LOAD ROUTINE WITH LIVE FIRESTORE LOGGING PER STUDENT USER ID
 document.getElementById('add-more-questions-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
   const addBtn = document.getElementById('add-more-questions-btn');
@@ -349,7 +392,6 @@ async function renderFinalScore(container, score, total) {
   `;
   container.appendChild(scoreCard);
 
-  // 📈 SECURE DATA COMPLIANCE: Push individual performance log into cloud clusters linked to student tracking profiles
   if (currentStudentUser) {
     try {
       await addDoc(collection(db, "student_performance_records"), {
@@ -360,7 +402,8 @@ async function renderFinalScore(container, score, total) {
         accuracyPercentage: percentage,
         loggedTimestamp: serverTimestamp()
       });
-      console.log("Analytics telemetry compiled into database core parameters successfully.");
+      // Refresh telemetry feed metrics immediately so the new history bar updates instantly without refreshing!
+      await renderPastSprintHistory();
     } catch (dbErr) {
       console.error("Database connection fault logged:", dbErr);
     }
