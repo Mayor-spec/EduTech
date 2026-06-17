@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // ==========================================================================
 // 1. FIREBASE CONFIGURATION
@@ -16,6 +17,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app); // Active Session State Tracking Interface
 
 // ==========================================================================
 // 2. DIRECT GEMINI CONNECTION (Scraper-Proof Format)
@@ -26,6 +28,7 @@ const part2 = "AT5BylokndKf5fs47mEoxPvkibG8w3kV4";
 const GEMINI_API_KEY = part1 + part2;
 
 let extractedDocumentText = "";
+let currentStudentUser = null; // Global reference pointer for historical analytics logging
 
 // Dynamic volume tracking decks
 let globalFlashcardsDeck = [];
@@ -34,12 +37,83 @@ let currentCardIndex = 0;
 let globalMnemonicsDeck = [];
 let currentMnemonicIndex = 0;
 
-// Scoring and global progression states
+// Scoring progression states
 let totalQuestionsCount = 0;
 let correctAnswersCount = 0;
 let answeredQuestionsCount = 0;
 
-// Setup Individual Widget 3D Flip Listeners
+// ==========================================================================
+// 3. AUTHENTICATION CONTROLLERS & INTERFACE ROUTING
+// ==========================================================================
+
+// Switch UI screens between Login Box and Signup Box
+document.getElementById('go-to-signup')?.addEventListener('click', () => {
+  document.getElementById('login-form-box').classList.add('hidden');
+  document.getElementById('signup-form-box').classList.remove('hidden');
+});
+
+document.getElementById('go-to-login')?.addEventListener('click', () => {
+  document.getElementById('signup-form-box').classList.add('hidden');
+  document.getElementById('login-form-box').classList.remove('hidden');
+});
+
+// Create Account Pipeline
+document.getElementById('signup-btn')?.addEventListener('click', async () => {
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  
+  if (!email || !password) return alert("Please fill in all creation parameters.");
+  
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+    alert("🎉 Account created successfully! Welcome to your new workspace.");
+  } catch (err) {
+    alert("❌ Registration Interrupted: " + err.message);
+  }
+});
+
+// Sign In Pipeline
+document.getElementById('login-btn')?.addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  
+  if (!email || !password) return alert("Please fill in all login credentials.");
+  
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    alert("❌ Sign In Interrupted: " + err.message);
+  }
+});
+
+// Logout Pipeline
+document.getElementById('logout-action-trigger')?.addEventListener('click', async () => {
+  try {
+    await signOut(auth);
+    window.location.reload(); // Hard reset application bounds to secure memory states
+  } catch (err) {
+    alert("Error logging out: " + err.message);
+  }
+});
+
+// Global Observer watching for session adjustments across the client thread
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentStudentUser = user;
+    document.getElementById('user-display-email').innerText = user.email;
+    document.getElementById('auth-section').classList.add('hidden');
+    document.getElementById('main-application-workspace').classList.remove('hidden');
+  } else {
+    currentStudentUser = null;
+    document.getElementById('main-application-workspace').classList.add('hidden');
+    document.getElementById('auth-section').classList.remove('hidden');
+  }
+});
+
+// ==========================================================================
+// 4. CORE PIPELINES (Workspace Logic Engine)
+// ==========================================================================
+
 document.getElementById('summary-widget')?.addEventListener('click', () => {
   document.getElementById('summary-widget').classList.toggle('flipped');
 });
@@ -48,7 +122,6 @@ document.getElementById('mnemonic-widget')?.addEventListener('click', () => {
   document.getElementById('mnemonic-widget').classList.toggle('flipped');
 });
 
-// Dynamic File Input Listener
 document.getElementById('file-upload')?.addEventListener('change', async (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -64,7 +137,6 @@ document.getElementById('file-upload')?.addEventListener('change', async (event)
     if (extension === 'pdf') {
       const pdfjsLib = window['pdfjs-dist/build/pdf'];
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-      
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       let text = "";
       for (let i = 1; i <= pdf.numPages; i++) {
@@ -96,50 +168,28 @@ document.getElementById('file-upload')?.addEventListener('change', async (event)
   }
 });
 
-// Summary Navigation Controllers
 document.getElementById('next-card-btn')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (globalFlashcardsDeck.length === 0) return;
-  const widget = document.getElementById('summary-widget');
-  widget.classList.remove('flipped');
-  setTimeout(() => {
-    currentCardIndex = (currentCardIndex + 1) % globalFlashcardsDeck.length;
-    renderFlashcard();
-  }, 150);
+  e.stopPropagation(); if (globalFlashcardsDeck.length === 0) return;
+  document.getElementById('summary-widget').classList.remove('flipped');
+  setTimeout(() => { currentCardIndex = (currentCardIndex + 1) % globalFlashcardsDeck.length; renderFlashcard(); }, 150);
 });
 
 document.getElementById('prev-card-btn')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (globalFlashcardsDeck.length === 0) return;
-  const widget = document.getElementById('summary-widget');
-  widget.classList.remove('flipped');
-  setTimeout(() => {
-    currentCardIndex = (currentCardIndex - 1 + globalFlashcardsDeck.length) % globalFlashcardsDeck.length;
-    renderFlashcard();
-  }, 150);
+  e.stopPropagation(); if (globalFlashcardsDeck.length === 0) return;
+  document.getElementById('summary-widget').classList.remove('flipped');
+  setTimeout(() => { currentCardIndex = (currentCardIndex - 1 + globalFlashcardsDeck.length) % globalFlashcardsDeck.length; renderFlashcard(); }, 150);
 });
 
-// Mnemonic Navigation Controllers
 document.getElementById('next-mnemonic-btn')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (globalMnemonicsDeck.length === 0) return;
-  const widget = document.getElementById('mnemonic-widget');
-  widget.classList.remove('flipped');
-  setTimeout(() => {
-    currentMnemonicIndex = (currentMnemonicIndex + 1) % globalMnemonicsDeck.length;
-    renderMnemonicCard();
-  }, 150);
+  e.stopPropagation(); if (globalMnemonicsDeck.length === 0) return;
+  document.getElementById('mnemonic-widget').classList.remove('flipped');
+  setTimeout(() => { currentMnemonicIndex = (currentMnemonicIndex + 1) % globalMnemonicsDeck.length; renderMnemonicCard(); }, 150);
 });
 
 document.getElementById('prev-mnemonic-btn')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (globalMnemonicsDeck.length === 0) return;
-  const widget = document.getElementById('mnemonic-widget');
-  widget.classList.remove('flipped');
-  setTimeout(() => {
-    currentMnemonicIndex = (currentMnemonicIndex - 1 + globalMnemonicsDeck.length) % globalMnemonicsDeck.length;
-    renderMnemonicCard();
-  }, 150);
+  e.stopPropagation(); if (globalMnemonicsDeck.length === 0) return;
+  document.getElementById('mnemonic-widget').classList.remove('flipped');
+  setTimeout(() => { currentMnemonicIndex = (currentMnemonicIndex - 1 + globalMnemonicsDeck.length) % globalMnemonicsDeck.length; renderMnemonicCard(); }, 150);
 });
 
 function renderFlashcard() {
@@ -158,174 +208,93 @@ function renderMnemonicCard() {
   document.getElementById('mnemonic-index-indicator').innerText = `${currentMnemonicIndex + 1} / ${globalMnemonicsDeck.length}`;
 }
 
-// Core Generation Pipeline
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
-  if (!notesText) return alert("Please input or upload study assets first!");
+  if (!notesText) return alert("Please input study assets first!");
 
   const questionCount = document.getElementById('quiz-count').value;
   const generateBtn = document.getElementById('generate-btn');
   
-  // ⏳ Advanced Multi-State Interactive Loading Loop
   generateBtn.disabled = true;
   generateBtn.innerText = "🔍 Analyzing notes...";
 
   let loadState = 0;
-  const loadingMessages = [
-    "⚡ Generating summary flashcards...",
-    "🧠 Forging memory mnemonics...",
-    "📝 Assembling quiz questions...",
-    "🎨 Polishing your sprint dashboard..."
-  ];
-
+  const loadingMessages = ["⚡ Generating flashcards...", "🧠 Forging mnemonics...", "📝 Assembling quizzes...", "🎨 Polishing dashboard..."];
   const loadingInterval = setInterval(() => {
     if (generateBtn.disabled && loadState < loadingMessages.length) {
-      generateBtn.innerText = loadingMessages[loadState];
-      loadState++;
+      generateBtn.innerText = loadingMessages[loadState]; loadState++;
     }
   }, 2200);
 
   try {
     const promptText = `You are an expert high-yield medical and technical academic tutor. Analyze these notes and generate a comprehensive set of summary concept flashcards, a set of high-yield word acronym mnemonic card objects, and an active question assessment layout.
-    
-    CRITICAL VOLUME INSTRUCTIONS:
-    - Do NOT limit yourself to a fixed number of flashcards or mnemonics.
-    - Dynamically scale the volume based on the note complexity. Short notes can have 2-4 cards. Extensive dense notes should scale up significantly to guarantee zero high-yield context loss.
-    
     Notes to analyze: ${notesText}
-    
-    You MUST respond ONLY with a raw JSON object matching this exact structure, do not include markdown blocks like \`\`\`json:
+    You MUST respond ONLY with a raw JSON object matching this exact structure, do not include markdown blocks:
     {
-      "flashcards": [
-        { 
-          "front": "🎯 <strong style='font-size:1.1rem;'>Core Concept Title</strong><br><br>What is the fundamental objective or process name?", 
-          "back": "<strong style='color:#1e40af;'>⚡ Key High-Yield Insights:</strong><br><br>• Strategic diagnostic standard or path mechanism detail 1<br>• High-yield laboratory identification criteria 2<br>• Important clinical rule or testing trap detail 3" 
-        }
-      ],
-      "mnemonics": [
-        {
-          "front": "🧠 <strong style='font-size:1.1rem;'>Retention Acronym Title</strong><br><br>The high-yield key mnemonic keyword is: <strong style='color:#b91c1c; font-size:1.2rem;'>KEYWORD</strong>",
-          "back": "<strong style='color:#92400e; display:block; margin-bottom:12px;'>💡 Acronym Breakdown:</strong><strong>K</strong> = Real complete phrase starting with K here<br><strong>E</strong> = Real complete phrase starting with E here"
-        }
-      ],
-      "quiz": [
-        {
-          "question": "Standalone direct multiple choice question?",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correctAnswer": "The exact correct matching text string",
-          "explanation": "Brief context validation sentence."
-        }
-      ]
+      "flashcards": [{ "front": "🎯 Title", "back": "⚡ Details" }],
+      "mnemonics": [{ "front": "🧠 Mnemonic Keyword", "back": "💡 Breakdown" }],
+      "quiz": [{ "question": "Q?", "options": ["A","B","C","D"], "correctAnswer": "A", "explanation": "Why" }]
     }
-    
-    CRITICAL MNEMONIC RULES (AVOID CHOPPING):
-    - The acronym keyword MUST be a real, readable word or recognizable medical/technical abbreviation.
-    - NEVER chop a single word across lines. The keyword letters must match the first letter of the phrase perfectly.
-    - Format every single phrase item cleanly on its own line exactly matching this model layout: <strong>LETTER</strong> = Complete context statement here
-    - Use a single <br> tag after each definition line string so it stacks perfectly, cleanly, and vertically down the card interface.
-    
-    CRITICAL ASSESSMENT INSTRUCTION: Generate exactly ${questionCount} objects inside the quiz array list elements. Do not use filler phrases like 'According to the notes'.`;
+    CRITICAL MNEMONIC RULES: Acronym must be a real word. Do NOT chop words across lines. Format as: <strong>LETTER</strong> = Statement<br>`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: {
-          temperature: 0.15,
-          responseMimeType: "application/json"
-        }
-      })
+      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }], generationConfig: { temperature: 0.15, responseMimeType: "application/json" } })
     });
 
     const resultData = await response.json();
-    if (!response.ok) throw new Error(resultData.error?.message || "Connection failure");
-
     let aiResponseText = resultData.candidates[0].content.parts[0].text;
     if (aiResponseText.includes("```")) aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
     
     const data = JSON.parse(aiResponseText.trim());
 
-    // Process & Render Summary Deck dynamically
     globalFlashcardsDeck = Array.isArray(data.flashcards) ? data.flashcards : [];
-    currentCardIndex = 0;
-    renderFlashcard();
+    currentCardIndex = 0; renderFlashcard();
 
-    // Process & Render Mnemonics Deck dynamically
     globalMnemonicsDeck = Array.isArray(data.mnemonics) ? data.mnemonics : [];
-    currentMnemonicIndex = 0;
-    renderMnemonicCard();
+    currentMnemonicIndex = 0; renderMnemonicCard();
 
-    // Reset scoring arrays for fresh calculation
-    totalQuestionsCount = 0;
-    correctAnswersCount = 0;
-    answeredQuestionsCount = 0;
-
+    totalQuestionsCount = 0; correctAnswersCount = 0; answeredQuestionsCount = 0;
     const quizContainer = document.getElementById('quiz-content');
     quizContainer.innerHTML = ''; 
-    
-    const quizData = Array.isArray(data.quiz) ? data.quiz : [];
-    appendQuestionsToQuiz(quizData);
+    appendQuestionsToQuiz(Array.isArray(data.quiz) ? data.quiz : []);
 
     document.getElementById('input-section').classList.add('hidden');
     document.getElementById('workspace-section').classList.remove('hidden');
-
   } catch (error) {
-    alert("⚠️ App Execution Interrupted:\n" + error.message);
+    alert("⚠️ Execution Interrupted: " + error.message);
   } finally {
-    clearInterval(loadingInterval); // Stop the timer when loading finishes
-    generateBtn.innerText = "Generate Study Sprint";
-    generateBtn.disabled = false;
+    clearInterval(loadingInterval); generateBtn.innerText = "Generate Study Sprint"; generateBtn.disabled = false;
   }
 });
 
-// Reusable function to build and append quiz cards dynamically
 function appendQuestionsToQuiz(questionsArray) {
   const quizContainer = document.getElementById('quiz-content');
-  
   questionsArray.forEach((q) => {
     totalQuestionsCount++;
     const activeIndex = totalQuestionsCount;
-
     const qElement = document.createElement('div');
     qElement.className = 'quiz-question';
     qElement.innerHTML = `<p><strong>Q${activeIndex}: ${q.question}</strong></p>`;
-    
     const optionsContainer = document.createElement('div');
     optionsContainer.className = 'options-container';
 
     q.options.forEach(option => {
       const btn = document.createElement('button');
-      btn.innerText = option;
-      btn.className = 'option-btn';
-      
+      btn.innerText = option; btn.className = 'option-btn';
       btn.addEventListener('click', async () => {
         const siblingButtons = optionsContainer.querySelectorAll('.option-btn');
         siblingButtons.forEach(b => b.disabled = true);
         answeredQuestionsCount++;
 
         if (option === q.correctAnswer) {
-          btn.style.backgroundColor = 'var(--accent-success)';
-          btn.style.color = '#fff';
-          btn.style.borderColor = 'var(--accent-success)';
-          correctAnswersCount++;
+          btn.style.backgroundColor = 'var(--accent-success)'; btn.style.color = '#fff'; correctAnswersCount++;
         } else {
-          btn.style.backgroundColor = 'var(--accent-error)';
-          btn.style.color = '#fff';
-          btn.style.borderColor = 'var(--accent-error)';
-          
-          siblingButtons.forEach(b => {
-            if (b.innerText === q.correctAnswer) {
-              b.style.border = '2px dashed var(--accent-success)';
-              b.style.color = 'var(--accent-success)';
-              b.style.backgroundColor = '#f0fdf4';
-            }
-          });
+          btn.style.backgroundColor = 'var(--accent-error)'; btn.style.color = '#fff';
+          siblingButtons.forEach(b => { if (b.innerText === q.correctAnswer) { b.style.border = '2px dashed var(--accent-success)'; b.style.backgroundColor = '#f0fdf4'; } });
         }
-
-        const exp = document.createElement('p');
-        exp.className = 'quiz-explanation';
-        exp.innerHTML = `<small>💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
+        const exp = document.createElement('p'); exp.className = 'quiz-explanation'; exp.innerHTML = `<small>💡 <strong>Explanation:</strong> ${q.explanation}</small>`;
         qElement.appendChild(exp);
 
         if (answeredQuestionsCount === totalQuestionsCount) {
@@ -334,87 +303,66 @@ function appendQuestionsToQuiz(questionsArray) {
       });
       optionsContainer.appendChild(btn);
     });
-    
-    qElement.appendChild(optionsContainer);
-    quizContainer.appendChild(qElement);
+    qElement.appendChild(optionsContainer); quizContainer.appendChild(qElement);
   });
 }
 
-// Dynamic Question Generator Button Listener
+// ⚡ EXTRA LOAD ROUTINE WITH LIVE FIRESTORE LOGGING PER STUDENT USER ID
 document.getElementById('add-more-questions-btn').addEventListener('click', async () => {
   const notesText = document.getElementById('notes-input').value;
   const addBtn = document.getElementById('add-more-questions-btn');
-  
-  addBtn.innerText = "⏳ Fetching 3 New Questions...";
-  addBtn.disabled = true;
+  addBtn.innerText = "⏳ Fetching 3 New Questions..."; addBtn.disabled = true;
 
   const ongoingScoreCard = document.querySelector('#quiz-content > div[style*="text-align: center"]');
   if (ongoingScoreCard) ongoingScoreCard.remove();
 
   try {
-    const dynamicPrompt = `You are a high-yield technical assessment engine. Review these notes and generate exactly 3 fresh, unique multiple-choice questions that are DIFFERENT from basic standard definitions.
-    
-    Notes: ${notesText}
-    
-    You MUST respond ONLY with a raw JSON object matching this exact structure:
-    {
-      "quiz": [
-        {
-          "question": "Sharp standalone analytical question?",
-          "options": ["A", "B", "C", "D"],
-          "correctAnswer": "Exact match option text string",
-          "explanation": "High-yield context rule justification statement."
-        }
-      ]
-    }`;
-
+    const dynamicPrompt = `Review notes and generate exactly 3 fresh multiple choice questions in raw JSON format matching the quiz schema setup. Notes: ${notesText}`;
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        contents: [{ parts: [{ text: dynamicPrompt }] }],
-        generationConfig: { temperature: 0.3, responseMimeType: "application/json" }
-      })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: dynamicPrompt }] }], generationConfig: { temperature: 0.3, responseMimeType: "application/json" } })
     });
-
     const resultData = await response.json();
-    if (!response.ok) throw new Error("Could not populate additional questions layer.");
-
     let aiResponseText = resultData.candidates[0].content.parts[0].text;
     if (aiResponseText.includes("```")) aiResponseText = aiResponseText.replace(/```json|```/g, "").trim();
-    
-    const data = JSON.parse(aiResponseText.trim());
-    const expansionQuizData = Array.isArray(data.quiz) ? data.quiz : [];
-    
+    const expansionQuizData = JSON.parse(aiResponseText.trim()).quiz || [];
     appendQuestionsToQuiz(expansionQuizData);
-    alert("🎉 Added 3 brand new high-yield questions to the bottom of your track!");
-
   } catch (error) {
     alert("⚠️ Could not load more questions: " + error.message);
   } finally {
-    addBtn.innerText = "➕ Add More Questions";
-    addBtn.disabled = false;
+    addBtn.innerText = "➕ Add More Questions"; addBtn.disabled = false;
   }
 });
 
-function renderFinalScore(container, score, total) {
+async function renderFinalScore(container, score, total) {
   const existingScore = container.querySelector('.final-score-banner');
   if (existingScore) existingScore.remove();
 
   const scoreCard = document.createElement('div');
   scoreCard.className = 'final-score-banner';
-  scoreCard.style.marginTop = '24px';
-  scoreCard.style.padding = '20px';
-  scoreCard.style.backgroundColor = '#eef2ff';
-  scoreCard.style.borderRadius = '12px';
-  scoreCard.style.textAlign = 'center';
-  scoreCard.style.border = '1px solid var(--border-color)';
-  
+  scoreCard.style.cssText = 'margin-top:24px; padding:20px; background:#eef2ff; border-radius:12px; text-align:center; border:1px solid var(--border-color);';
   const percentage = Math.round((score / total) * 100);
   scoreCard.innerHTML = `
-    <h3 style="color: var(--accent-color); margin-bottom: 4px;">Sprint Complete!</h3>
-    <p style="font-size: 1.6rem; font-weight: 800; color: var(--text-main);">${score} / ${total} (${percentage}%)</p>
-    <button onclick="window.location.reload();" style="margin-top:14px; padding: 10px 20px; background: var(--accent-color); color:white; border:none; border-radius:8px; cursor:pointer;">New Sprint</button>
+    <h3 style="color:var(--accent-color); margin-bottom:4px;">Sprint Complete!</h3>
+    <p style="font-size:1.6rem; font-weight:800; color:var(--text-main);">${score} / ${total} (${percentage}%)</p>
+    <button onclick="window.location.reload();" style="margin-top:14px; padding:10px 20px; background:var(--accent-color); color:white; border:none; border-radius:8px; cursor:pointer;">New Sprint</button>
   `;
   container.appendChild(scoreCard);
+
+  // 📈 SECURE DATA COMPLIANCE: Push individual performance log into cloud clusters linked to student tracking profiles
+  if (currentStudentUser) {
+    try {
+      await addDoc(collection(db, "student_performance_records"), {
+        userId: currentStudentUser.uid,
+        userEmail: currentStudentUser.email,
+        scorePoints: score,
+        totalMetricsCount: total,
+        accuracyPercentage: percentage,
+        loggedTimestamp: serverTimestamp()
+      });
+      console.log("Analytics telemetry compiled into database core parameters successfully.");
+    } catch (dbErr) {
+      console.error("Database connection fault logged:", dbErr);
+    }
+  }
 }
